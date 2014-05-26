@@ -1,0 +1,101 @@
+
+package gui.simulation;
+
+import static javax.swing.GroupLayout.Alignment.LEADING;
+import static javax.swing.GroupLayout.Alignment.CENTER;
+import gui.components.ColorTextPane;
+
+import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.SystemColor;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+
+import javax.swing.BorderFactory;
+import javax.swing.GroupLayout;
+import javax.swing.JButton;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JProgressBar;
+import javax.swing.JScrollPane;
+
+@SuppressWarnings("serial")
+public class SimulationFrame extends JFrame {
+
+	private JButton cancelButton;
+	private JProgressBar progressBar;
+	private SimulationWork simulationWork;
+	public JLabel header;
+	private ColorTextPane progressDescription;
+
+	public SimulationFrame(JPanel relativeTo, String title, String heading,
+			final SimulationWork simulationWork) {
+		setTitle(title);
+		setLocationRelativeTo(relativeTo);
+		setAlwaysOnTop(false);
+
+		// header
+		header = new JLabel(heading);
+		// progress bar
+		progressBar = new JProgressBar();
+		// progressBar.setIndeterminate(0);
+		progressBar.setPreferredSize(new Dimension(350, 15));
+		// progress description
+		progressDescription = new ColorTextPane();
+		progressDescription.setFont(new java.awt.Font("MS Sans Serif", 1, 11));
+		progressDescription.append(Color.BLACK, "Starting simulation...\n");
+		JScrollPane logScrollPane = new JScrollPane(progressDescription);
+		logScrollPane.setPreferredSize(new Dimension(350, 100));
+		logScrollPane.setBorder(BorderFactory.createLineBorder(
+				SystemColor.activeCaption, 2));
+		// cancel button
+		cancelButton = new JButton("Cancel simulation");
+		// adding cancel button listener
+		cancelButton.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				// TODO more cancel operations
+				if (simulationWork.cancel(true)) {
+					cancelButton.setEnabled(false);
+				}
+			}
+		});
+
+		// creating layout and adding elements
+		GroupLayout layout = new GroupLayout(getContentPane());
+		getContentPane().setLayout(layout);
+		layout.setAutoCreateGaps(true);
+		layout.setAutoCreateContainerGaps(true);
+
+		layout.setHorizontalGroup(layout.createSequentialGroup().addGroup(
+				layout.createParallelGroup(LEADING).addComponent(header)
+						.addComponent(progressBar).addComponent(logScrollPane)
+						.addComponent(cancelButton, CENTER)));
+
+		layout.setVerticalGroup(layout.createSequentialGroup()
+				.addComponent(header).addComponent(progressBar)
+				.addComponent(logScrollPane).addComponent(cancelButton));
+
+		// launching simulation work
+		this.simulationWork = simulationWork;
+		this.simulationWork.setDialog(this);
+		this.simulationWork.execute();
+	}
+
+	public void addProgressText(Color c, String newText) {
+		progressDescription.append(c, newText);
+	}
+
+	public ColorTextPane getProgressDescription() {
+		return progressDescription;
+	}
+
+	public JProgressBar getProgressBar() {
+		return progressBar;
+	}
+
+	public JButton getCancelButton() {
+		return cancelButton;
+	}
+}

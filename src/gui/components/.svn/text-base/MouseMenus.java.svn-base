@@ -1,0 +1,147 @@
+package gui.components;
+
+import edu.uci.ics.jung.visualization.VisualizationViewer;
+import gui.Icons;
+
+import java.awt.Font;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.geom.Point2D;
+import java.util.Collection;
+import java.util.List;
+
+import javax.swing.JCheckBoxMenuItem;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JMenuItem;
+import javax.swing.JPopupMenu;
+
+import model.components.Link;
+import model.components.SubstrateLink;
+import model.components.Node;
+import model.components.RequestSwitch;
+import model.components.Server;
+import model.components.SubstrateRouter;
+import model.components.SubstrateSwitch;
+import model.components.VirtualMachine;
+
+/**
+ * A collection of classes used to assemble popup mouse menus for the custom
+ * edges and vertices.
+ */
+public class MouseMenus {
+    
+	// Link menu
+    public static class EdgeMenu extends JPopupMenu {        
+        // private JFrame frame; 
+        public EdgeMenu() {
+            super("Link Menu");
+            this.add(new LinkIdDisplay());
+            this.addSeparator();
+            this.add(new DeleteLinkMenuItem<Link>());
+            this.addSeparator();
+            this.add(new BandwidthDisplay());           
+        }
+        
+    }
+    
+    public static class LinkIdDisplay extends JMenuItem implements EdgeMenuListener<Link> {
+        public void setEdgeAndView(Link l, VisualizationViewer visComp) {
+            this.setText("Link ID: "+l.toString());
+            this.setFont(new Font(this.getFont().getName(),Font.BOLD,this.getFont().getSize()));
+            this.setIcon(Icons.LINK);
+        }
+    }
+    
+    public static class BandwidthDisplay extends JMenuItem implements EdgeMenuListener<Link> {
+        public void setEdgeAndView(Link l, VisualizationViewer visComp) {
+            this.setText("Bandwidth = "+l.getBandwidth());
+        }
+    }
+    
+    public static class AvailableBandwidthDisplay extends JMenuItem implements EdgeMenuListener<Link> {
+        public void setEdgeAndView(Link l, VisualizationViewer visComp) {
+            this.setText("Available Bandwidth = "+((SubstrateLink)l).getAvailableBandwidth());
+        }
+    }
+    
+    // Node menu
+    public static class VertexMenu extends JPopupMenu {
+        public VertexMenu() {
+            super("Node Menu");
+            this.add(new NodeIdDisplay());
+            this.addSeparator();
+            this.add(new DeleteNodeMenuItem<Node>());
+            this.addSeparator();
+            this.add(new CpuDisplay());
+            this.add(new MemoryDisplay());
+        }
+
+    }
+    
+    public static class NodeIdDisplay extends JMenuItem implements VertexMenuListener<Node> {
+        public void setVertexAndView(Node n, VisualizationViewer visComp) {
+            this.setText("Node ID: "+n.toString());
+            this.setFont(new Font(this.getFont().getName(),Font.BOLD,this.getFont().getSize()));
+            this.setIcon(n.getSmallIcon());
+        }
+    }
+    
+    public static class CpuDisplay extends JMenuItem implements VertexMenuListener<Node> {
+        public void setVertexAndView(Node n, VisualizationViewer visComp) {
+            this.setText("CPU = "+n.getCpu());
+        }
+    }
+    
+    public static class MemoryDisplay extends JMenuItem implements VertexMenuListener<Node> {
+        public void setVertexAndView(Node n, VisualizationViewer visComp) {
+            this.setText("Memory = "+n.getMemory());
+        }
+    }
+    
+    public static class VlansDisplay extends JMenuItem implements VertexMenuListener<Node> {
+		public void setVertexAndView(Node n, VisualizationViewer visComp) {
+			this.setText("VLANs = "+n.getVlans());
+        }
+    }
+    
+    public static class DiskSpaceDisplay extends JMenuItem implements VertexMenuListener<Node> {
+		public void setVertexAndView(Node n, VisualizationViewer visComp) {
+            if (n instanceof VirtualMachine)
+            	this.setText("Disk space = "+((VirtualMachine) n).getDiskSpace());
+            else if (n instanceof Server)
+            	this.setText("Disk space = "+((Server) n).getDiskSpace());
+            else return;
+        }
+    } 
+    
+    public static class AvailableCpuDisplay extends JMenuItem implements VertexMenuListener<Node> {
+		public void setVertexAndView(Node n, VisualizationViewer visComp) {
+        	this.setText("Available CPU = "+n.getAvailableCpu());
+        }
+    }
+    
+    public static class AvailableMemoryDisplay extends JMenuItem implements VertexMenuListener<Node> {
+		public void setVertexAndView(Node n, VisualizationViewer visComp) {
+        	this.setText("Available Memory = "+n.getAvailableMemory());
+        }
+    }
+    
+    public static class AvailableDiskSpaceDisplay extends JMenuItem implements VertexMenuListener<Node> {
+		public void setVertexAndView(Node n, VisualizationViewer visComp) {
+			if (n instanceof Server)
+				this.setText("Available Disk space = "+((Server) n).getAvailableDiskSpace());
+        }
+    }
+    
+    public static class AvailableVlansDisplay extends JMenuItem implements VertexMenuListener<Node> {
+		public void setVertexAndView(Node n, VisualizationViewer visComp) {
+			Collection<Link> links = ((GraphViewerPanel) visComp).getNodeLinks(n);
+			if (n instanceof SubstrateSwitch ||
+					n instanceof SubstrateRouter ||
+					n instanceof Server)
+				this.setText("Available VLANs = "+n.getAvailableVlans(links));
+        }
+    }
+    
+}

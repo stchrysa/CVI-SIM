@@ -1,0 +1,862 @@
+package model;
+
+import ilog.concert.*;
+import ilog.cplex.IloCplex;
+import tools.NodeComparator;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.List;
+
+import edu.uci.ics.jung.graph.Graph;
+import edu.uci.ics.jung.graph.util.EdgeType;
+import edu.uci.ics.jung.graph.util.Pair;
+
+import model.components.Link;
+import model.components.Node;
+import model.components.Server;
+import model.components.VirtualMachine;
+import model.components.RequestRouter;
+import model.components.RequestSwitch;
+import model.components.SubstrateSwitch;
+import model.components.SubstrateRouter;
+
+/**
+ * DUMMY Algorithm Class.
+ */
+public class Algorithm {
+	public static final int rVine=0; 
+
+	private String id;
+	private String state;
+	private Substrate substrate ;
+	private List<Request> reqs;
+	
+	public Algorithm(String id) {
+		this.id = id;
+		this.state = "available";
+	}
+
+	public String getId() {
+		return id;
+	}
+
+	public void setId(String id) {
+		this.id = id;
+	}
+	
+	public String getState() {
+		return state;
+	}
+
+	public void setState(String state) {
+		this.state = state;
+	}
+	public void addSubstrate(Substrate substrate) {
+		this.substrate = substrate;
+	}
+	public void addRequests(List<Request> reqs) {
+		this.reqs = reqs;
+	}
+	
+	public void runAlgorithm (){
+		if (this.id.contentEquals("rVine")) rVine();
+
+	}
+	
+//	private void rVine() {
+//		for (Request req : reqs)
+//			System.out.println("Allocating "+req.getId()+
+//					" at time "+req.getStartDate());
+//		
+//	}
+	
+	private void rVine(){
+        
+		if (reqs.size()==0) return;
+		
+		Substrate augmentedSubstrate = new Substrate("augmentedSubstrate");
+		
+		Collection<Link> edges =  this.substrate.getGraph().getEdges();
+		
+		for (Link current : edges){
+			Pair<Node> x =  this.substrate.getGraph().getEndpoints(current);
+			augmentedSubstrate.getGraph().addEdge(current, x.getFirst(), x.getSecond(),  EdgeType.UNDIRECTED);
+			augmentedSubstrate.getGraph().addVertex(x.getFirst());
+			augmentedSubstrate.getGraph().addVertex(x.getSecond());
+		}
+		
+		
+		
+		int subLinkNum = augmentedSubstrate.getGraph().getEdgeCount();
+
+		
+		
+		Collection<Node> tmpSubNodes = getNodes(this.substrate.getGraph());
+		for (Request req: reqs){ //for every request
+			Collection<Node> tmpReqNodes = getNodes(req.getGraph());
+		
+			for (Node x : tmpReqNodes){
+				augmentedSubstrate.getGraph().addVertex(x);
+				for (Node subNode : tmpSubNodes){
+					int LinkID = subLinkNum++;
+				
+					Link l = new Link(LinkID,(int) 2.147483647E5);
+					augmentedSubstrate.getGraph().addEdge(l, x, subNode, EdgeType.UNDIRECTED);	
+				}
+			}
+
+			// run cplex on mixed integer problem
+			try {
+				
+				IloCplex cplex = new IloCplex();
+				IloCplex cplex1 = new IloCplex();
+
+				
+				// nodes
+				int initSubNodeNum = tmpSubNodes.size();
+				int reqNodeNum = tmpReqNodes.size();
+				int augGraph = initSubNodeNum+reqNodeNum;
+
+				//links
+				int reqLinksNum = req.getGraph().getEdgeCount();
+				int augGraphL = reqLinksNum*augGraph;
+				int numOfFlows =augGraph*augGraphL; 
+				
+				//augmented capacity table
+				double[][] augCapTable = getCapTable(augmentedSubstrate.getGraph()) ;
+				
+				
+			
+				//create x,f  variables, all with bounds 
+		
+				IloNumVar[][] x = new IloNumVar[augGraph][];
+				for (int i=0;i<augGraph;i++){
+					x[i]=cplex.numVarArray(augGraph,0,1, IloNumVarType.Int);
+				}
+				
+				IloNumVar[][][] f = new IloNumVar[reqLinksNum][][];
+				for (int k=0;k<reqLinksNum;k++){
+					f[k]=new IloNumVar[augGraph][];
+					for (int i=0;i<augGraph;i++){
+						f[k][i]=cplex.numVarArray(augGraph, 0, Double.MAX_VALUE);
+					}
+				}
+				
+				
+				//flows
+				////////////////////////////////////////////////////////////////////////
+				//It builds the first summation of the objective function//////////////
+				//////////////////////////////////////////////////////////////////////
+				IloLinearNumExpr flows = cplex.linearNumExpr();
+				
+				for (int i=reqNodeNum;i<augGraph; i++){ 
+					for (int j=reqNodeNum;j<augGraph; j++){
+						for (int k =0; k<reqLinksNum; k++) {
+						flows.addTerm(1.0, f[k][i][j]);					
+						}
+					}
+				}
+				
+				
+			
+				IloLinearNumExpr capacities = cplex.linearNumExpr();
+				
+				ArrayList<Node> tmpReqN = new ArrayList<Node>();
+				ArrayList<Node> tmpSubN = new ArrayList<Node>();
+				tmpReqN = 	(ArrayList<Node>) getNodes(req.getGraph());
+				tmpSubN = 	(ArrayList<Node>) getNodes(this.substrate.getGraph());
+				
+				Collections.sort(tmpReqN,new NodeComparator());
+				Collections.sort(tmpSubN,new NodeComparator());
+				
+				///////////////////////////////////////////////////
+				//Find how many routers and servers we have///////
+				/////////////////////////////////////////////////
+				
+				int reqServers=0;
+				int reqRouters=0;
+				int reqSwitches=0;
+				int subServers=0;
+				int subRouters=0;
+				int subSwitches=0;
+				int Ntypes=3;
+				
+				ArrayList<ArrayList<Integer>> Vv = new ArrayList<ArrayList<Integer>>();
+				ArrayList<ArrayList<Integer>> Vs = new ArrayList<ArrayList<Integer>>();
+				
+				for (int i=0;i<Ntypes;i++){
+					Vv.add(new ArrayList<Integer>());
+					Vs.add(new ArrayList<Integer>());
+				}
+				
+				for (int i=0;i<reqNodeNum;i++){
+					if (tmpReqN.get(i) instanceof VirtualMachine) {
+						Vv.get(0).add(reqServers, i);
+						reqServers++;
+					}
+					if (tmpReqN.get(i) instanceof RequestRouter) {
+						Vv.get(1).add(reqRouters, i);
+						reqRouters++;
+					}
+					if (tmpReqN.get(i) instanceof RequestSwitch) {
+						Vv.get(2).add(reqSwitches, i);
+						reqSwitches++;
+					}
+				}
+
+
+				int types = 0;
+				boolean visited_r = true;
+				boolean visited_sw = true;
+				boolean visited_s = true;
+				for (int i=0;i<initSubNodeNum;i++){
+					if (tmpSubN.get(i) instanceof Server){
+						if (visited_s) {
+							types=types+1;
+							visited_s=false;
+						}
+						Vs.get(0).add(subServers,i);
+						subServers++;
+					}
+					if (tmpSubN.get(i) instanceof SubstrateRouter){
+						if (visited_r) {
+							types=types+1;
+							visited_r=false;
+						}
+						Vs.get(1).add(subRouters,i);
+						subRouters++;
+					}
+					if (tmpSubN.get(i) instanceof SubstrateSwitch) {
+						if (visited_sw) {
+							types=types+1;
+							visited_sw=false;
+						}
+						Vs.get(2).add(subSwitches, i);
+						subSwitches++;
+					}
+				}
+
+
+    			////////////////////////////////////////////////////////////////
+				//Build arrays for the different functional characteristics////
+				//////////////////////////////////////////////////////////////
+								
+				int[][] Vcost=new int[types][reqNodeNum];
+				int[][] Scost=new int[types][initSubNodeNum];
+			
+
+				for (int i=0;i<reqNodeNum;i++){
+					if (tmpReqN.get(i) instanceof VirtualMachine){
+						Vcost[0][i]=tmpReqN.get(i).getCpu();
+						Vcost[1][i]=tmpReqN.get(i).getMemory();
+						Vcost[2][i]=((VirtualMachine)tmpReqN.get(i)).getDiskSpace();
+					}
+					if (tmpReqN.get(i) instanceof RequestRouter){
+						Vcost[0][i]=tmpReqN.get(i).getCpu();
+						Vcost[1][i]=tmpReqN.get(i).getMemory();
+					}
+					if (tmpReqN.get(i) instanceof RequestSwitch){
+						Vcost[0][i]=tmpReqN.get(i).getCpu();
+						Vcost[1][i]=tmpReqN.get(i).getMemory();
+					}
+				}
+						
+				for (int i=0;i<initSubNodeNum;i++){
+					if (tmpSubN.get(i) instanceof Server){
+						Scost[0][i]=tmpSubN.get(i).getCpu();
+						Scost[1][i]=tmpSubN.get(i).getMemory();
+						Scost[2][i]=((Server)tmpSubN.get(i)).getDiskSpace();
+					}
+					if (tmpSubN.get(i) instanceof SubstrateRouter){
+						Scost[0][i]=tmpSubN.get(i).getCpu();
+						Scost[1][i]=tmpSubN.get(i).getMemory();
+					}
+					if (tmpSubN.get(i) instanceof SubstrateSwitch){
+						Scost[0][i]=tmpSubN.get(i).getCpu();
+						Scost[1][i]=tmpSubN.get(i).getMemory();
+					}
+				}
+				
+				
+				
+				////////////////////////////////////////////////////////////
+				//building the second summation of the objective function//
+				//////////////////////////////////////////////////////////
+				
+				for (int i=0;i<Ntypes;i++){
+					for (int w : Vs.get(i)){
+						for (int m : Vv.get(i)){
+							for (int j=0;j<3;j++){
+								capacities.addTerm(Vcost[j][m], x[m][w+reqNodeNum]);
+								//System.out.println("Vcost"+j+m+"*x"+m+(w+reqNodeNum));
+							}
+						}
+					}
+				}
+				
+				//The objective function
+				IloNumExpr expr = cplex.sum(flows,capacities);
+				
+				//create objective minimization
+				cplex.addMinimize(expr);
+				
+				//////////////////////////////////////////////////////////
+				//Link constraint////////////////////////////////////////
+				////////////////////////////////////////////////////////
+				
+				for (int i=0;i<augGraph; i++){
+					for (int j=0;j<augGraph; j++){
+						IloNumExpr expr1 =cplex.prod(x[0][0],0);
+						IloNumExpr flowSum =cplex.prod(x[0][0],0);
+						IloLinearNumExpr availBW = cplex.linearNumExpr();
+						
+						for (int k=0;k<reqLinksNum; k++){
+							flowSum = cplex.sum(cplex.prod(f[k][i][j],1), 
+									cplex.prod(f[k][j][i],1));
+									expr1 =cplex.sum(expr1,flowSum);
+						}
+						double capacity = augCapTable[i][j];	
+						availBW.addTerm(capacity,x[i][j]);
+						cplex.addLe(expr1,availBW);
+						
+					}
+				}
+				
+				//node constraint
+				for (int i=0;i<Ntypes;i++){
+					for (int w : Vs.get(i)){
+						for (int m : Vv.get(i)){
+							for (int j=0;j<3;j++){
+								double cpuSub=Scost[j][w];
+								cplex.addLe(cplex.prod(Vcost[j][m],x[m][w+reqNodeNum]),cpuSub);
+								//System.out.println("Vcost"+j+m+"*x"+m+(w+reqNodeNum)+"<=Rn"+j+w);
+							}
+						}
+					}
+				}
+				
+				/*sum of flows greater or equal to x. To ensure that x=0 when we don't
+				have a flow*/
+				for (int i=0;i<augGraph;i++){
+					IloNumExpr expr1 =cplex.prod(x[0][0],0);
+					IloNumExpr flowSum =cplex.prod(x[0][0],0);
+					IloLinearNumExpr capReq = cplex.linearNumExpr();
+					for (int j=0;j<augGraph;j++){
+						capReq.addTerm(1,x[i][j]);
+						for (int k=0;k<reqLinksNum;k++){
+							flowSum = cplex.sum(cplex.prod(f[k][i][j],1), 
+									cplex.prod(f[k][j][i],1));
+									expr1 =cplex.sum(expr1,flowSum);
+						}
+					
+						cplex.addGe(expr1, capReq);
+						
+					}
+					
+				}
+				
+				//meta-binary constraints
+				//constraint 0
+				
+				for (int i=0;i<Ntypes;i++){
+					for (int w : Vs.get(i)){
+						IloLinearNumExpr capReq = cplex.linearNumExpr();
+						for (int m : Vv.get(i)){
+							capReq.addTerm(1,x[m][w+reqNodeNum]);
+						}
+						cplex.addLe(capReq,1);
+					}
+				}
+
+		
+				//constraint 1
+				for (int i=0;i<Ntypes;i++){
+					for (int m : Vv.get(i)){
+						IloLinearNumExpr capReq = cplex.linearNumExpr();
+						for (int w : Vs.get(i)){
+							capReq.addTerm(1,x[m][w+reqNodeNum]);
+						}
+						cplex.addEq(capReq,1);
+					}
+				}
+
+				//constraint 2	
+				for (int i=0;i<augGraph; i++){	
+					for (int j=0;j<augGraph; j++){	
+						
+							IloLinearNumExpr capReq1 = cplex.linearNumExpr();
+							IloLinearNumExpr capReq2 = cplex.linearNumExpr();
+							capReq1.addTerm(1,x[i][j]);
+							capReq2.addTerm(1,x[j][i]);
+							cplex.addEq(capReq1,capReq2);
+						
+					}
+				}
+				
+				/*To ensure that each virtual node will mapped on a substrate node
+				of the same type*/
+				for (int m=0;m<reqNodeNum;m++){
+					IloLinearNumExpr capReq = cplex.linearNumExpr();
+						for (int w=reqNodeNum;w<augGraph;w++){
+							capReq.addTerm(1,x[m][w]);
+					}
+						cplex.addLe(capReq, 1);
+				}
+				
+				double[][] demands = getBandTable(req.getGraph());
+				
+								
+				/////////////////////////////////////////////
+				//find the origins of the virtual link//////
+				///////////////////////////////////////////
+				int[] o=new int[reqLinksNum];
+				int ct=0;
+				for (int i=0;i<reqNodeNum;i++){
+					for (int j=0;j<reqNodeNum;j++){
+						if ((j>i)&&(demands[i][j]!=0)){
+							o[ct]=i;
+							ct++;
+						}
+					}					
+				}
+				
+				///////////////////////////////////////////////////
+				//find the destinations of the virtual links//////
+				/////////////////////////////////////////////////
+				int[] d=new int[reqLinksNum];
+				ct=0;
+				for (int i=0;i<reqNodeNum;i++){
+					for (int j=0;j<reqNodeNum;j++){
+						if ((j<i)&&(demands[i][j]!=0)){
+							d[ct]=i;
+							ct++;
+						}
+					}
+					
+				}
+				
+				
+				//flow reserv 1
+				for (int k=0;k<reqLinksNum; k++){
+					for (int i=0;i<augGraph; i++){ //substrate	
+						IloLinearNumExpr capReq = cplex.linearNumExpr();
+						if (i!=o[k]&&i!=d[k]){
+						for (int j=0;j<augGraph; j++){
+							capReq.addTerm(1,f[k][i][j]);
+							capReq.addTerm(-1,f[k][j][i]);	
+						}
+						cplex.addEq(capReq,0);
+						}
+					}
+				}
+			
+				//flow reserv2
+				double[][] tmpReqLinks = getCapTable(req.getGraph());
+				
+				for (int k=0;k<reqLinksNum;k++){
+					IloLinearNumExpr capReq = cplex.linearNumExpr();
+					for (int w=0;w<augGraph;w++){
+						capReq.addTerm(1,f[k][o[k]][w]);
+						capReq.addTerm(-1,f[k][w][o[k]]);
+					}
+					double reCap = 0;
+					reCap=tmpReqLinks[o[k]][d[k]];
+					cplex.addEq(capReq,reCap); 
+				}
+				
+				//flow reserv3
+				
+				
+				for (int k=0;k<reqLinksNum;k++){
+					IloLinearNumExpr capReq = cplex.linearNumExpr();
+					for (int w=0;w<augGraph;w++){
+						capReq.addTerm(1,f[k][d[k]][w]);
+						capReq.addTerm(-1,f[k][w][d[k]]);
+					}
+					double reCap = 0;
+					reCap=-tmpReqLinks[o[k]][d[k]];
+					cplex.addEq(capReq,reCap); 
+				}
+					
+								
+			 	
+				System.out.println(cplex.toString());
+				//Solve the Model
+				if ( cplex.solve() ) {
+					cplex.output().println("Solution status = " + cplex.getStatus()); /*
+					The returned value tells you what ILOG CPLEX found out about the model: whether it found the optimal solution or only a feasible solution, whether it proved the model to be unbounded or infeasible, or whether
+					nothing at all has been determined at this point.
+					*/
+				
+					cplex.output().println("Solution value = " + cplex.getObjValue());
+										
+					System.out.println("x values:");
+					
+					for (int i=0;i<augGraph;i++){
+						System.out.println("");
+						for (int j=0;j<augGraph;j++){
+							System.out.printf("\t");
+							System.out.print(cplex.getValue(x[i][j]));
+							
+						}
+					}
+					
+					System.out.println("");
+					System.out.println("flow values:");
+					for (int k=0;k<reqLinksNum;k++){
+						System.out.println("");
+						System.out.println(" virtual link: "+k);
+						for (int i=0;i<augGraph;i++){
+							System.out.println("");
+							for (int j=0;j<augGraph;j++){
+								System.out.printf("\t");
+								System.out.print( cplex.getValue(f[k][i][j]));
+							}
+						}
+					}
+					
+					double[][] xVar =new double [augGraph][augGraph];
+					for (int i=0;i<augGraph;i++){
+						xVar[i] = cplex.getValues(x[i]);
+					}
+					double[][][] fVar =new double [reqLinksNum][augGraph][augGraph];
+					for (int k=0;k<reqLinksNum;k++){
+						for (int i=0;i<augGraph;i++){
+							fVar[k][i] = cplex.getValues(f[k][i]);
+						}
+					}
+					
+					System.out.println();
+					
+					LinkedHashMap<Node, Node> NodeMapping = dNodeMapping(tmpSubN, tmpReqNodes,reqLinksNum, xVar, fVar );
+					tmpSubN = 	(ArrayList<Node>) getNodes(this.substrate.getGraph());
+					Collections.sort(tmpSubN,new NodeComparator());
+/*					Collection c = NodeMapping.entrySet();
+					Iterator itr = c.iterator();
+										*/
+/*					while(itr.hasNext()){
+					 Map.Entry entry = (Map.Entry)itr.next();
+				       System.out.println("virtual: " + ((Node)entry.getKey()).getId()+ " : "
+				         + " real: " + ((Node)entry.getValue()).getId());
+					}*/
+					
+					//map links  -  solve MCF problem
+					
+					double[] lbf_mcf = new double[initSubNodeNum];
+					for (int i=0;i<initSubNodeNum;i++)
+						lbf_mcf[i]=0;
+
+					double[] ubf_mcf = new double[initSubNodeNum];
+					for (int i=0;i<(initSubNodeNum);i++)
+						ubf_mcf[i]=Double.MAX_VALUE;
+					
+
+					IloNumVar[][][] f_mcf = new IloNumVar[reqLinksNum][][];
+					for (int k=0;k<reqLinksNum;k++){
+						f_mcf[k]=new IloNumVar[initSubNodeNum][];
+						for (int i=0;i<initSubNodeNum;i++){
+							f_mcf[k][i]=cplex1.numVarArray(initSubNodeNum, lbf_mcf, ubf_mcf);
+						}
+					}
+					
+					IloLinearNumExpr flows_mcf = cplex1.linearNumExpr();
+					
+					for (int i=0;i<initSubNodeNum; i++){ 
+						for (int j=0;j<initSubNodeNum; j++){
+							for (int k =0; k<reqLinksNum; k++) {
+							flows_mcf.addTerm(1.0, f_mcf[k][i][j]);
+							}
+						}
+					}
+
+					cplex1.addMinimize(flows_mcf);
+					
+					int[] o2=new int[reqLinksNum];
+					int[] d2=new int[reqLinksNum];
+					
+						
+					for (int i=0;i<augGraph;i++){
+						System.out.println("");
+						for (int j=0;j<augGraph;j++){
+							xVar[i][j]=Math.round(xVar[i][j]);
+							System.out.printf("\t%f",xVar[i][j]);
+						}
+					}
+					
+					for (int i=0; i<o.length;i++)
+						if (NodeMapping.containsKey(tmpReqN.get(o[i]))){
+							o2[i]=NodeMapping.get(tmpReqN.get(o[i])).getId();
+						}
+					for (int i=0; i<d.length;i++)
+						if (NodeMapping.containsKey(tmpReqN.get(d[i]))){
+							d2[i]=NodeMapping.get(tmpReqN.get(d[i])).getId();
+						}
+			
+					
+					//flow reservation1		
+					for (int k=0;k<reqLinksNum;k++){
+						IloLinearNumExpr capReq = cplex1.linearNumExpr();
+						for (int i=0;i<initSubNodeNum;i++){
+							if ((o2[k]-reqNodeNum)!=i&&(d2[k]-reqNodeNum)!=i){
+								for (int j=0;j<initSubNodeNum;j++){
+									capReq.addTerm(1,f_mcf[k][i][j]);
+									capReq.addTerm(-1,f_mcf[k][j][i]);
+								}
+							}
+							cplex1.addEq(capReq,0);
+						}
+								
+					}
+				
+					// FIXME fix this
+					
+					//flow reservation2
+//					for(int k=0;k<reqLinksNum;k++){
+//						IloLinearNumExpr capReq = cplex1.linearNumExpr();
+//						for (int i=0;i<initSubNodeNum;i++){
+//							capReq.addTerm(1,f_mcf[k][o2[k]-reqNodeNum][i]);
+//							capReq.addTerm(-1,f_mcf[k][i][o2[k]-reqNodeNum]);
+//						}
+//						double reCap = 0;
+//						reCap=tmpReqLinks[o[k]][d[k]];
+//						cplex1.addEq(capReq,reCap);
+//					}
+					
+					//flow reservation3
+//					for(int k=0;k<reqLinksNum;k++){
+//						IloLinearNumExpr capReq = cplex1.linearNumExpr();
+//						for (int i=0;i<initSubNodeNum;i++){
+//							capReq.addTerm(1,f_mcf[k][d2[k]-reqNodeNum][i]);
+//							capReq.addTerm(-1,f_mcf[k][i][d2[k]-reqNodeNum]);
+//						}
+//						double reCap = 0;
+//						reCap=-tmpReqLinks[o[k]][d[k]];
+//						cplex1.addEq(capReq,reCap);
+//					}
+					
+					
+					
+					//Link constraint
+					for (int i=0;i<initSubNodeNum; i++){
+						for (int j=0;j<initSubNodeNum; j++){
+							IloNumExpr expr1 =cplex1.prod(f_mcf[0][0][0],0);
+							IloNumExpr flowSum =cplex1.prod(f_mcf[0][0][0],0);
+							/////////////////////////////////////////////////						
+							for (int k=0;k<reqLinksNum; k++){
+								flowSum = cplex1.sum(cplex1.prod(f_mcf[k][i][j],1), 
+										cplex1.prod(f_mcf[k][j][i],1));
+								expr1 =cplex1.sum(expr1,flowSum);
+							}
+							double capacity =augCapTable[reqNodeNum+i][reqNodeNum+j];
+							cplex1.addLe(expr1,capacity);	
+							
+						}
+					}// checked
+					
+					
+					System.out.println(cplex1.toString());
+					if ( cplex1.solve() ) {
+						cplex1.output().println("Solution status = " + cplex1.getStatus()); 
+						//The returned value tells you what ILOG cplex1 found out about the model: whether it found the optimal solution or only a feasible solution, whether it proved the model to be unbounded or infeasible, or whether
+						//nothing at all has been determined at this point.
+						
+					
+						cplex1.output().println("Solution value = " + cplex1.getObjValue());
+
+						
+						for (int k=0;k<reqLinksNum;k++){
+							for (int i=0;i<initSubNodeNum;i++){
+								for (int j=0;j<initSubNodeNum;j++){
+									if (cplex1.getValue(f_mcf[k][i][j])!=0)
+									System.out.println( "f[" +k+ " " +(i+reqNodeNum)+" "+(j+reqNodeNum)+"] " +cplex1.getValue(f_mcf[k][i][j]));
+								}
+							}
+						}
+						
+						System.out.println("");
+						for (int k=0;k<reqLinksNum;k++){
+							System.out.println("");
+							System.out.println("link"+k);
+							for (int i=0;i<initSubNodeNum;i++){
+								System.out.println("");
+								for (int j=0;j<initSubNodeNum;j++){
+									System.out.printf("\t");
+									System.out.print( cplex1.getValue(f_mcf[k][i][j]));
+								}
+							}
+						}
+						
+						
+					}///cplex1				
+					
+			
+				}
+					cplex.end();
+					cplex1.end();
+				
+					
+					
+				// create model and solve it
+				} catch (IloException e) {
+				System.err.println("Concert exception caught: " + e);
+				}
+			
+				
+		}
+		
+	
+	}
+	
+	private 	LinkedHashMap<Node, Node> dNodeMapping(ArrayList<Node> substrate, Collection<Node> request, int reqLinksNum, double[][] xVar, double[][][] fVar){
+		LinkedHashMap<Node, Node> phi = new LinkedHashMap<Node, Node>(); // request-real
+		
+		for (Node node: request){
+			if (substrate.size()!=0){
+				double tmp = -1;
+				Node selected=null;
+				for (Node subNode: substrate){
+					double p = 0 ;
+					for (int k=0;k<reqLinksNum; k++){
+						p+=(xVar[node.getId()][subNode.getId()])*
+								(fVar[k][node.getId()][subNode.getId()]+fVar[k][subNode.getId()][node.getId()]);
+					}
+					if (p>tmp){
+						tmp = p;
+						selected = subNode;
+					}
+				}
+				substrate.remove(selected);
+				phi.put(node,selected);
+			}
+			else {
+				System.out.println("Node can not be mapped");
+				return null;
+			}
+		}
+	
+		return phi;
+	}
+	
+	private 	LinkedHashMap<Node, Node> rNodeMapping(ArrayList<Node> substrate, Collection<Node> request, int reqLinksNum, double[][] xVar, double[][][] fVar){		
+		LinkedHashMap<Node, Node> phi = new LinkedHashMap<Node, Node>(); // request-real
+
+		
+		for (Node node: request){
+			if (substrate.size()!=0){
+				double sum = 0;
+				
+				Node selected=null;
+				LinkedHashMap<Node, Double> phi_sub = new LinkedHashMap<Node, Double>(); 
+				for (Node subNode: substrate){
+					double p = 0 ;
+					for (int k=0;k<reqLinksNum; k++){
+						p+=(xVar[node.getId()][subNode.getId()])*
+						(fVar[k][node.getId()][subNode.getId()]+fVar[k][subNode.getId()][node.getId()]);
+					}
+					sum +=p;
+					phi_sub.put(subNode, p);
+				}
+				double tmp = -1;
+				for (Node subNode: substrate){
+					if (sum==0) sum = Double.MIN_VALUE;
+					double pSubNode = phi_sub.get(subNode)/sum;
+					//System.out.println("checking node: " + subNode.getId() + " tmp " +tmp + " pSubNode: " +pSubNode +" " + phi_sub.get(subNode) + " " +sum );
+					if (pSubNode>tmp){
+						tmp = pSubNode;
+						selected = subNode;
+					//	System.out.println("selected " +selected.getId());
+					}
+				}
+				substrate.remove(selected);
+				phi.put(node,selected);
+			}
+			else {
+				System.out.println("Node can not be mapped");
+				return null;
+			}
+		}
+	
+		return phi;
+	}
+	
+	private Collection<Node> getNodes(Graph<Node,Link> t) {
+		Collection<Node> reqNodes =new ArrayList<Node>();
+		Collection<Link> edges =  t.getEdges();
+		
+		for (Link current : edges){
+			Pair<Node> currentNodes =t.getEndpoints(current);
+			if (reqNodes.contains(currentNodes.getFirst())==false)
+				reqNodes.add(currentNodes.getFirst());
+			if (reqNodes.contains(currentNodes.getSecond())==false)
+				reqNodes.add(currentNodes.getSecond());
+		}
+		
+		
+		return reqNodes;
+	}
+	
+	private double[][] getCapTable(Graph<Node,Link> t) {
+		int num = t.getVertexCount();
+		//Map<Pair<Node>, Double> table = new LinkedHashMap<Pair<Node>, Double>();
+		Collection<Link> edges =  t.getEdges();
+		double[][] tab =  new double[num][num];
+		
+		for (Link current : edges){
+			Pair<Node> currentNodes =t.getEndpoints(current);
+			int node1 = currentNodes.getFirst().getId();
+			int node2= currentNodes.getSecond().getId();
+			double cap = current.getBandwidth();
+			tab[node1][node2]=cap;
+			tab[node2][node1]=cap;
+			//table.put(currentNodes, cap);
+		}
+		
+		return tab;
+	}
+	
+	private double[][] getBandTable(Graph<Node,Link> t) {
+		int num = t.getVertexCount();
+		//Map<Pair<Node>, Double> table = new LinkedHashMap<Pair<Node>, Double>();
+		Collection<Link> edges =  t.getEdges();
+		double[][] tab =  new double[num][num];
+		
+		for (Link current : edges){
+			Pair<Node> currentNodes =t.getEndpoints(current);
+			int node1 = currentNodes.getFirst().getId();
+			int node2= currentNodes.getSecond().getId();
+			double cap = current.getBandwidth();
+			tab[node1][node2]=cap;
+			tab[node2][node1]=-cap;
+			//table.put(currentNodes, cap);
+		}
+		
+		
+		
+		return tab;
+	}
+	
+	private double[] getResourceTable(Graph<Node,Link> t) {
+		int num = t.getVertexCount();
+		Collection<Link> edges =  t.getEdges();
+		double[] tab =  new double[num];
+		
+		for (Link current : edges){
+			Pair<Node> currentNodes =t.getEndpoints(current);
+			int node1 = currentNodes.getFirst().getId();
+			int node2= currentNodes.getSecond().getId();
+			double node1CPU = currentNodes.getFirst().getCpu();
+			double node2CPU = currentNodes.getSecond().getCpu();
+			if (tab[node1]==0)  tab[node1]=node1CPU;
+			if (tab[node2]==0)  tab[node2]=node2CPU;
+		}
+		
+		
+		
+		return tab;
+	}
+}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            

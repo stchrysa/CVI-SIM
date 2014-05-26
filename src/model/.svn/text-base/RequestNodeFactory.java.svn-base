@@ -1,0 +1,125 @@
+package model;
+
+import gui.SimulatorConstants;
+import model.components.Node;
+import model.components.RequestRouter;
+import model.components.RequestSwitch;
+import model.components.VirtualMachine;
+
+import org.apache.commons.collections15.Factory;
+
+/**
+ * This class is a factory of RequestNode. It generates the elements
+ * with random parameters. Ranges for randomness can be found on 
+ * SimulatorConstants class
+ */
+public class RequestNodeFactory implements Factory<Node>{
+
+	private int nodeCount;
+	
+	public RequestNodeFactory() {
+		super();
+		nodeCount = 0;
+	}
+	
+	public Node create() {
+		Node node = null;
+		int cpu;
+		int memory;
+		int nodeType = (int) (Math.random()*3);
+		switch (nodeType) {
+			case 0: {
+				node = new RequestRouter(nodeCount);
+				break;
+			}
+			case 1: {
+				node = new RequestSwitch(nodeCount); 
+				// Random VLANs generation
+				int vlans = SimulatorConstants.MIN_VLANS_REQUEST 
+							+ (int)(Math.random()*((SimulatorConstants.MAX_VLANS_REQUEST 
+							- SimulatorConstants.MIN_VLANS_REQUEST) + 1));
+				((RequestSwitch) node).setVlans(vlans);
+				break;
+			}
+			case 2: {
+				node = new VirtualMachine(nodeCount);
+				// Random diskSpace generation
+				int diskSpace = SimulatorConstants.MIN_DISK_REQUEST 
+							+ (int)(Math.random()*((SimulatorConstants.MAX_DISK_REQUEST 
+							- SimulatorConstants.MIN_DISK_REQUEST) + 1));
+				((VirtualMachine) node).setDiskSpace(diskSpace);
+				break;
+			}
+		}
+		// Random cpu generation
+		cpu = SimulatorConstants.MIN_CPU_REQUEST 
+					+ (int)(Math.random()*((SimulatorConstants.MAX_CPU_REQUEST 
+					- SimulatorConstants.MIN_CPU_REQUEST) + 1));
+		node.setCpu(cpu);
+		// Random ram generation
+		memory = SimulatorConstants.MIN_MEMORY_REQUEST 
+					+ (int)(Math.random()*((SimulatorConstants.MAX_MEMORY_REQUEST 
+					- SimulatorConstants.MIN_MEMORY_REQUEST) + 1));
+		node.setMemory(memory);
+
+		nodeCount++;
+		return node;
+	}
+	
+	/** Generate a Node specified by its type **/
+	public Node create(String nodeType) {
+		Node node = null;
+		int cpu;
+		int memory;
+		if (nodeType.equalsIgnoreCase("router")) {
+			node = new RequestRouter(nodeCount);
+		}
+		else if (nodeType.equalsIgnoreCase("switch")) {
+			node = new RequestSwitch(nodeCount); 
+			// Random VLANs generation
+			int vlans = SimulatorConstants.MIN_VLANS_REQUEST 
+						+ (int)(Math.random()*((SimulatorConstants.MAX_VLANS_REQUEST 
+						- SimulatorConstants.MIN_VLANS_REQUEST) + 1));
+			((RequestSwitch) node).setVlans(vlans);
+		}
+		else if (nodeType.equalsIgnoreCase("virtualMachine")) {
+			node = new VirtualMachine(nodeCount);
+			// Random diskSpace generation
+			int diskSpace = SimulatorConstants.MIN_DISK_REQUEST 
+						+ (int)(Math.random()*((SimulatorConstants.MAX_DISK_REQUEST 
+						- SimulatorConstants.MIN_DISK_REQUEST) + 1));
+			((VirtualMachine) node).setDiskSpace(diskSpace);
+		}
+		// Random cpu generation
+		cpu = SimulatorConstants.MIN_CPU_REQUEST 
+					+ (int)(Math.random()*((SimulatorConstants.MAX_CPU_REQUEST 
+					- SimulatorConstants.MIN_CPU_REQUEST) + 1));
+		node.setCpu(cpu);
+		// Random ram generation
+		memory = SimulatorConstants.MIN_MEMORY_REQUEST 
+					+ (int)(Math.random()*((SimulatorConstants.MAX_MEMORY_REQUEST 
+					- SimulatorConstants.MIN_MEMORY_REQUEST) + 1));
+		node.setMemory(memory);
+
+		nodeCount++;
+		return node;
+		
+	}
+
+	public Object getCopy() {
+		RequestNodeFactory f = new RequestNodeFactory();
+		f.nodeCount = this.nodeCount;
+		return f;
+	}
+
+	public int getNodeCount() {
+		return nodeCount;
+	}
+
+	public void setNodeCount(int nodeCount) {
+		this.nodeCount = nodeCount;
+	}
+	
+	
+	
+}

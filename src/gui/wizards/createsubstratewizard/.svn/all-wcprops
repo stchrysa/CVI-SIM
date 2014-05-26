@@ -1,0 +1,59 @@
+K 25
+svn:wc:ra_dav:version-url
+V 70
+/svn/!svn/ver/33/trunk/Simulator/src/gui/wizards/createsubstratewizard
+END
+CSImportPanelDescriptor.java
+K 25
+svn:wc:ra_dav:version-url
+V 99
+/svn/!svn/ver/30/trunk/Simulator/src/gui/wizards/createsubstratewizard/CSImportPanelDescriptor.java
+END
+CSImportPanel.java
+K 25
+svn:wc:ra_dav:version-url
+V 89
+/svn/!svn/ver/30/trunk/Simulator/src/gui/wizards/createsubstratewizard/CSImportPanel.java
+END
+CSFinishPanelDescriptor.java
+K 25
+svn:wc:ra_dav:version-url
+V 99
+/svn/!svn/ver/58/trunk/Simulator/src/gui/wizards/createsubstratewizard/CSFinishPanelDescriptor.java
+END
+CSRandomPanelDescriptor.java
+K 25
+svn:wc:ra_dav:version-url
+V 99
+/svn/!svn/ver/58/trunk/Simulator/src/gui/wizards/createsubstratewizard/CSRandomPanelDescriptor.java
+END
+CSFinishPanel.java
+K 25
+svn:wc:ra_dav:version-url
+V 89
+/svn/!svn/ver/58/trunk/Simulator/src/gui/wizards/createsubstratewizard/CSFinishPanel.java
+END
+CSRandomPanel.java
+K 25
+svn:wc:ra_dav:version-url
+V 89
+/svn/!svn/ver/58/trunk/Simulator/src/gui/wizards/createsubstratewizard/CSRandomPanel.java
+END
+CSSelectionPanelDescriptor.java
+K 25
+svn:wc:ra_dav:version-url
+V 102
+/svn/!svn/ver/30/trunk/Simulator/src/gui/wizards/createsubstratewizard/CSSelectionPanelDescriptor.java
+END
+CSuWizard.java
+K 25
+svn:wc:ra_dav:version-url
+V 85
+/svn/!svn/ver/58/trunk/Simulator/src/gui/wizards/createsubstratewizard/CSuWizard.java
+END
+CSSelectionPanel.java
+K 25
+svn:wc:ra_dav:version-url
+V 92
+/svn/!svn/ver/30/trunk/Simulator/src/gui/wizards/createsubstratewizard/CSSelectionPanel.java
+END

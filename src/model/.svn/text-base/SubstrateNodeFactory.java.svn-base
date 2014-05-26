@@ -1,0 +1,126 @@
+package model;
+
+import gui.SimulatorConstants;
+import model.components.Node;
+import model.components.Server;
+import model.components.SubstrateRouter;
+import model.components.SubstrateSwitch;
+
+import org.apache.commons.collections15.Factory;
+
+/**
+ * This class is a factory of SubstrateNode. It generates the elements
+ * with random parameters. Ranges for randomness can be found on 
+ * SimulatorConstants class
+ */
+public class SubstrateNodeFactory implements Factory<Node>{
+
+	private int nodeCount;
+	
+	public SubstrateNodeFactory() {
+		super();
+		nodeCount = 0;
+	}
+	
+	/** Generate a random node **/
+	public Node create() {
+		Node node = null;
+		int cpu;
+		int memory;
+		int nodeType = (int) (Math.random()*3);
+		switch (nodeType) {
+			case 0: {
+				node = new SubstrateRouter(nodeCount);
+				node.setVlans(SimulatorConstants.MAX_ROUTER_VLANS);
+				break;
+			}
+			case 1: {
+				node = new SubstrateSwitch(nodeCount); 
+				node.setVlans(SimulatorConstants.MAX_SWITCH_VLANS);
+				// Random vlans generation
+//				int vlans = SimulatorConstants.MIN_VLANS 
+//							+ (int)(Math.random()*((SimulatorConstants.MAX_VLANS 
+//							- SimulatorConstants.MIN_VLANS) + 1));
+//				((SubstrateSwitch) node).setVlans(vlans);
+				break;
+			}
+			case 2: {
+				node = new Server(nodeCount);
+				// Random diskSpace generation
+				int diskSpace = SimulatorConstants.MIN_DISK 
+							+ (int)(Math.random()*((SimulatorConstants.MAX_DISK 
+							- SimulatorConstants.MIN_DISK) + 1));
+				((Server) node).setDiskSpace(diskSpace);
+				node.setVlans(SimulatorConstants.MAX_SERVER_VLANS);
+				break;
+			}
+		}
+		// Random cpu generation
+		cpu = SimulatorConstants.MIN_CPU 
+					+ (int)(Math.random()*((SimulatorConstants.MAX_CPU 
+					- SimulatorConstants.MIN_CPU) + 1));
+		node.setCpu(cpu);
+		// Random ram generation
+		memory = SimulatorConstants.MIN_MEMORY 
+					+ (int)(Math.random()*((SimulatorConstants.MAX_MEMORY 
+					- SimulatorConstants.MIN_MEMORY) + 1));
+		node.setMemory(memory);
+
+		nodeCount++;
+		return node;
+	}
+	
+	/** Generate a Node specified by its type **/
+	public Node create(String nodeType) {
+		Node node = null;
+		int cpu;
+		int memory;
+		
+		if (nodeType.equalsIgnoreCase("router")) {
+			node = new SubstrateRouter(nodeCount);
+			node.setVlans(SimulatorConstants.MAX_ROUTER_VLANS);
+		}
+		else if (nodeType.equalsIgnoreCase("switch")) {
+			node = new SubstrateSwitch(nodeCount); 
+			node.setVlans(SimulatorConstants.MAX_SWITCH_VLANS);
+		}
+		else if (nodeType.equalsIgnoreCase("server")) {
+			node = new Server(nodeCount);
+			// Random diskSpace generation
+			int diskSpace = SimulatorConstants.MIN_DISK 
+						+ (int)(Math.random()*((SimulatorConstants.MAX_DISK 
+						- SimulatorConstants.MIN_DISK) + 1));
+			((Server) node).setDiskSpace(diskSpace);
+			node.setVlans(SimulatorConstants.MAX_SERVER_VLANS);
+		}
+		
+		// Random cpu generation
+		cpu = SimulatorConstants.MIN_CPU 
+					+ (int)(Math.random()*((SimulatorConstants.MAX_CPU 
+					- SimulatorConstants.MIN_CPU) + 1));
+		node.setCpu(cpu);
+		// Random ram generation
+		memory = SimulatorConstants.MIN_MEMORY 
+					+ (int)(Math.random()*((SimulatorConstants.MAX_MEMORY 
+					- SimulatorConstants.MIN_MEMORY) + 1));
+		node.setMemory(memory);
+
+		nodeCount++;
+		return node;
+	}
+	
+	public Object getCopy() {
+		SubstrateNodeFactory f = new SubstrateNodeFactory();
+		f.nodeCount = this.nodeCount;
+		return f;
+	}
+
+	public int getNodeCount() {
+		return nodeCount;
+	}
+
+	public void setNodeCount(int nodeCount) {
+		this.nodeCount = nodeCount;
+	}
+
+}

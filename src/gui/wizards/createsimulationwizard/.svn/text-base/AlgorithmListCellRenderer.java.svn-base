@@ -1,0 +1,26 @@
+package gui.wizards.createsimulationwizard;
+
+import java.awt.Component;
+
+import javax.swing.DefaultListCellRenderer;
+import javax.swing.JList;
+
+import model.Algorithm;
+
+/** Show the ID of the element for JList that uses this Render **/
+class AlgorithmListCellRenderer extends DefaultListCellRenderer {
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 1L;
+
+	public Component getListCellRendererComponent(JList list, 
+            Object value,
+            int index, boolean isSelected,
+            boolean cellHasFocus) {
+		super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+		Algorithm a = (Algorithm)value;
+		setText(a.getId());
+		return this;
+	}
+}

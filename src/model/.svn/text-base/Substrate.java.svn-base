@@ -1,0 +1,24 @@
+package model;
+
+/**
+ * Substrate Class. Subclass of Network.
+ */
+public class Substrate extends Network {
+	
+    /** Creates a new instance of Substrate */
+    public Substrate(String id) {
+    	super(id);
+    	nodeFactory = new SubstrateNodeFactory();
+    	linkFactory = new SubstrateLinkFactory();
+    }
+    
+    public Object getCopy() {
+    	Substrate s = new Substrate(this.getId());
+    	s.state = this.state;
+    	s.nodeFactory = (SubstrateNodeFactory) ((SubstrateNodeFactory) this.nodeFactory).getCopy();
+    	s.linkFactory = (SubstrateLinkFactory) ((SubstrateLinkFactory) this.linkFactory).getCopy();
+    	s.graph = ((NetworkGraph) this.graph).getCopy();
+    	return s;
+    }
+    
+}

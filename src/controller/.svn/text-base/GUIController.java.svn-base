@@ -1,0 +1,459 @@
+package controller;
+
+import java.awt.Dimension;
+import java.awt.Insets;
+import java.awt.Point;
+import java.awt.Rectangle;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
+import java.util.ArrayList;
+import java.util.List;
+
+import javax.swing.JDialog;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JProgressBar;
+import javax.swing.JTabbedPane;
+import javax.swing.JTable;
+import javax.swing.JTextArea;
+import javax.swing.ProgressMonitor;
+import javax.swing.table.DefaultTableModel;
+
+import model.Algorithm;
+import model.Request;
+import model.Simulation;
+import model.Simulator;
+import model.Substrate;
+import model.components.Node;
+import model.components.RequestRouter;
+import model.components.RequestSwitch;
+import model.components.Server;
+import model.components.SubstrateRouter;
+import model.components.SubstrateSwitch;
+import model.components.VirtualMachine;
+import gui.Icons;
+import gui.SimulatorConstants;
+import gui.components.tables.AlgorithmsTableModel;
+import gui.components.tables.RequestsTableModel;
+import gui.components.tables.SubstratesTableModel;
+import gui.simulation.SimulationFrame;
+import gui.simulation.SimulationWork;
+import gui.wizards.createrequestwizard.CRFinishPanelDescriptor;
+import gui.wizards.createrequestwizard.CRRandomPanelDescriptor;
+import gui.wizards.createrequestwizard.CRSelectionPanelDescriptor;
+import gui.wizards.createrequestwizard.CRWizard;
+import gui.wizards.createsimulationwizard.CSAlgorithmPanelDescriptor;
+import gui.wizards.createsimulationwizard.CSRequestsPanelDescriptor;
+import gui.wizards.createsimulationwizard.CSSubstratePanelDescriptor;
+import gui.wizards.createsimulationwizard.CSWizard;
+import gui.wizards.createsubstratewizard.CSFinishPanelDescriptor;
+import gui.wizards.createsubstratewizard.CSImportPanelDescriptor;
+import gui.wizards.createsubstratewizard.CSRandomPanelDescriptor;
+import gui.wizards.createsubstratewizard.CSSelectionPanelDescriptor;
+import gui.wizards.createsubstratewizard.CSuWizard;
+
+import com.nexes.wizard.WizardPanelDescriptor;
+
+public class GUIController {
+
+	/** Launch CreateRequestWizard 
+	 * @param simulator 
+	 * @param requestsTable **/
+	public static void launchCreateRequestWizard(Simulator simulator, JTable requestsTable) {
+		
+		CRWizard wizard = new CRWizard(simulator);
+        wizard.getDialog().setTitle("Create requests wizard");
+        
+        WizardPanelDescriptor descriptor1 = new CRSelectionPanelDescriptor();
+        wizard.registerWizardPanel(CRSelectionPanelDescriptor.IDENTIFIER, descriptor1);
+
+        WizardPanelDescriptor descriptor2 = new CRRandomPanelDescriptor();
+        wizard.registerWizardPanel(CRRandomPanelDescriptor.IDENTIFIER, descriptor2);
+
+        WizardPanelDescriptor descriptor3 = new CRFinishPanelDescriptor();
+        wizard.registerWizardPanel(CRFinishPanelDescriptor.IDENTIFIER, descriptor3);
+        
+        wizard.setCurrentPanel(CRSelectionPanelDescriptor.IDENTIFIER);
+
+        int ret = wizard.showModalDialog();
+        if (ret==0) {
+        	// Add requests to the simulator
+        	simulator.addRequests(wizard.getRequests());
+        	// Refresh requests table
+	        for (Request request : wizard.getRequests()) {
+				((DefaultTableModel) requestsTable.getModel()).addRow(new Object[]{request.getId(),
+						request.getStartDate(),request.getEndDate(),request.getState()});
+			}
+        }
+        
+        System.out.println("Dialog return code is (0=Finish,1=Cancel,2=Error): " + ret);
+	}
+
+	/** Launch CreateSubstrateWizard 
+	 * @param simulator  
+	 * @param substratesTable **/
+	public static void launchCreateSubstrateWizard(Simulator simulator,
+			JTable substratesTable) {
+		CSuWizard wizard = new CSuWizard(simulator);
+        wizard.getDialog().setTitle("Create substrates wizard");
+        
+        WizardPanelDescriptor descriptor1 = new CSSelectionPanelDescriptor();
+        wizard.registerWizardPanel(CSSelectionPanelDescriptor.IDENTIFIER, descriptor1);
+
+        WizardPanelDescriptor descriptor2 = new CSRandomPanelDescriptor();
+        wizard.registerWizardPanel(CSRandomPanelDescriptor.IDENTIFIER, descriptor2);
+        
+        WizardPanelDescriptor descriptor3 = new CSImportPanelDescriptor();
+        wizard.registerWizardPanel(CSImportPanelDescriptor.IDENTIFIER, descriptor3);
+
+        WizardPanelDescriptor descriptor4 = new CSFinishPanelDescriptor();
+        wizard.registerWizardPanel(CSFinishPanelDescriptor.IDENTIFIER, descriptor4);
+        
+        wizard.setCurrentPanel(CSSelectionPanelDescriptor.IDENTIFIER);
+        
+        int ret = wizard.showModalDialog();
+        if (ret==0) {
+        	// Add substrates to the simulator
+        	simulator.addSubstrates(wizard.getSubstrates());
+        	// Refresh substrates table
+	        for (Substrate substrate : wizard.getSubstrates()) {
+				((DefaultTableModel) substratesTable.getModel()).addRow(new Object[]{substrate.getId(),
+						substrate.getState()});
+			}
+        }
+        
+        System.out.println("Dialog return code is (0=Finish,1=Cancel,2=Error): " + ret);
+	}
+	
+	/** Launch CreateSimulationWizard 
+	 * @param simulator  
+	 * @param simulatorContentPane
+	 * @param requestsTable
+	 * @param substratesTable
+	 * @param algorithmsTable **/
+	public static int launchCreateSimulationWizard(Simulator simulator, 
+			JPanel simulatorContentPane, 
+			JTable requestsTable, JTable substratesTable, 
+			JTable algorithmsTable) {
+		
+		int ret = 0;
+		
+		// Error control: check that not exists a simulation, exist requests, substrates and algorithms. If not, popupmessage.
+		if (simulator.getSimulation()!=null) {
+			// there is already a simulation running
+			JOptionPane.showMessageDialog(simulatorContentPane, 
+					"There is already a simulation running",
+                    "Simulation already running", 1);
+			return -1;
+		}
+		if (simulator.getRequests().size()==0) {
+			// no available requests to create a simulation
+			JOptionPane.showMessageDialog(simulatorContentPane, 
+					"There are no available requests to create a simulation",
+                    "Requests needed", 1);
+			return -1;
+		}
+		if (simulator.getSubstrates().size()==0) {
+			// no available substrates to create a simulation
+			JOptionPane.showMessageDialog(simulatorContentPane, 
+					"There are no available substrates to create a simulation",
+                    "Substrate needed", 1);
+			return -1;
+		}
+		if (simulator.getAlgorithms().size()==0) {
+			// no available algorithms to create a simulation
+			JOptionPane.showMessageDialog(simulatorContentPane, 
+					"There are no available algorithms to create a simulation",
+                    "Algorithm needed", 1);
+			return -1;
+		}
+		
+		CSWizard wizard = new CSWizard();
+        wizard.getDialog().setTitle("Create simulation wizard");
+        
+        // Setting wizard location (do not work properly)
+//        int x, y;
+//        Point topLeft = simulatorContentPane.getParent().getLocationOnScreen();
+//        Dimension parentSize = simulatorContentPane.getParent().getSize();
+//        Dimension mySize = wizard.getDialog().getSize();
+//        if (parentSize.width > mySize.width) 
+//        	x = ((parentSize.width - mySize.width)/2) + topLeft.x;
+//        else 
+//        	x = topLeft.x;
+//        if (parentSize.height > mySize.height) 
+//        	y = ((parentSize.height - mySize.height)/2) + topLeft.y;
+//        else 
+//        	y = topLeft.y;
+//        wizard.getDialog().setLocation (x, y);
+
+        WizardPanelDescriptor descriptor1 = new CSRequestsPanelDescriptor(simulator.getRequests());
+        wizard.registerWizardPanel(CSRequestsPanelDescriptor.IDENTIFIER, descriptor1);
+
+        WizardPanelDescriptor descriptor2 = new CSSubstratePanelDescriptor(simulator.getSubstrates());
+        wizard.registerWizardPanel(CSSubstratePanelDescriptor.IDENTIFIER, descriptor2);
+        
+        WizardPanelDescriptor descriptor3 = new CSAlgorithmPanelDescriptor(simulator.getAlgorithms());
+        wizard.registerWizardPanel(CSAlgorithmPanelDescriptor.IDENTIFIER, descriptor3);
+        
+        wizard.setCurrentPanel(CSRequestsPanelDescriptor.IDENTIFIER);
+        
+        ret = wizard.showModalDialog();
+        
+        if (ret==0) {
+        	// Add created simulation to the simulator
+        	Simulation simulation = new Simulation(wizard.getSelectedSubstrate(),
+        			wizard.getSelectedRequests(),
+        			wizard.getSelectedAlgorithm());
+        	simulator.setSimulation(simulation);
+        	/** Change status of the requests, substrate and 
+        	 * algorithm used for the new simulation **/
+        	for (Request request : wizard.getSelectedRequests())
+        		request.setState(SimulatorConstants.STATUS_READY);
+        	wizard.getSelectedSubstrate().setState(SimulatorConstants.STATUS_READY);
+        	wizard.getSelectedAlgorithm().setState(SimulatorConstants.STATUS_READY);
+        	/** Refresh views in order to show new status of the elements **/
+        	((RequestsTableModel) requestsTable.getModel()).refreshTableData();
+        	((SubstratesTableModel) substratesTable.getModel()).refreshTableData();
+        	((AlgorithmsTableModel) algorithmsTable.getModel()).refreshTableData();
+        }
+        
+        System.out.println("Dialog return code is (0=Finish,1=Cancel,2=Error): " + ret);
+        
+        return ret;
+	}
+
+	/** Launch simulation
+	 * There will be launched the simulation with requests, substrate 
+	 * and algorithm in the current simulation.
+	 * @param simulator  
+	 * @param requestsTable **/
+	public static int launchLaunchSimulation(Simulator simulator, 
+			JPanel simulatorContentPane,
+			JTable requestsTable) {
+		
+		Simulation simulation = simulator.getSimulation();
+		
+		// Error control:
+		if (simulator.getSimulation().getRequests().size()==0) {
+			// no ready requests to launch a simulation
+			JOptionPane.showMessageDialog(simulatorContentPane, 
+					"There are no requests ready to launch a simulation",
+                    "Requests needed", 1);
+			return -1;
+		}
+		
+		int ret = 0;
+		
+		// Preparing simulation work (thread)
+		final SimulationWork simulationWork = new SimulationWork(simulation);
+		simulationWork.addPropertyChangeListener(new PropertyChangeListener() {
+			@Override
+			public void propertyChange(PropertyChangeEvent evt) {
+				System.out.println("Property changed: "+evt.getPropertyName());
+				if (evt.getPropertyName().equals("progress")) {
+					//TODO Do corresponding changes in the GUI
+					//TODO Save state of resources at this time unit
+				} else if (evt.getPropertyName().equals("state")) {
+					System.out.println("State changed: "+simulationWork.getState());
+					if (simulationWork.isCancelled()) {
+						System.out.println("Simulation Canceled");
+					} else if (simulationWork.isDone()) {
+						System.out.println("Simulation Done");
+					}
+				}
+			}
+		});
+		// Setting visible the simulation progress & launching simulation
+		SimulationFrame sf = new SimulationFrame(simulatorContentPane, 
+				"Running simulation...", "Simulation progress", simulationWork);
+		sf.pack();
+		sf.setVisible(true);
+		
+		
+		/** Dummy simulation. It does nothing **/
+//		for (Request req : requests) {
+//			for (Node nr : req.getGraph().getVertices()) {
+//				for (Node ns : substrate.getGraph().getVertices()) {
+//						if (ns.getAvailableCpu()>nr.getCpu() &&
+//								ns.getAvailableMemory()>nr.getMemory()) {
+//							if (ns instanceof SubstrateRouter && nr instanceof RequestRouter) {
+//								((SubstrateRouter) ns).addVirtualRouter((RequestRouter) nr);
+//								((RequestRouter) nr).setPhysicalRouter((SubstrateRouter) ns);
+//								System.out.println("Router assigned!");
+//								break;
+//							} else if (ns instanceof SubstrateSwitch && nr instanceof RequestSwitch) {
+//								((SubstrateSwitch) ns).addVirtualSwitch((RequestSwitch) nr);
+//								((RequestSwitch) nr).setPhysicalSwitch((SubstrateSwitch) ns);
+//								System.out.println("Switch assigned!");
+//								break;
+//							} else if (ns instanceof Server && nr instanceof VirtualMachine) {
+//								((Server) ns).addVirtualMachine((VirtualMachine) nr);
+//								((VirtualMachine) nr).setServer((Server) ns);
+//								System.out.println("VM assigned!");
+//								break;
+//							}
+//						}
+//				}
+//			}
+//			
+//			//TODO assign links
+//			
+//			req.setState(SimulatorConstants.STATUS_ASSIGNED);
+//		}
+		
+		
+		
+		/** Refresh views **/
+		((RequestsTableModel) requestsTable.getModel()).refreshTableData();
+		
+		return ret;
+	}
+
+	/** Add selected requests to the current simulation **/
+	public static void addRequestsToSimulation(List<Request> selectedRequests,
+			Simulator simulator, JTable requestsTable) {
+		if (simulator.getSimulation()==null) return;
+		simulator.getSimulation().addRequests(selectedRequests);
+		/** Refresh views **/
+		((RequestsTableModel) requestsTable.getModel()).refreshTableData();
+		
+	}
+
+	/** Remove selected requests from the current simulation **/
+	public static void removeRequestsFromSimulation(List<Request> selectedRequests, 
+			Simulator simulator, JTable requestsTable) {
+		if (simulator.getSimulation()==null) return;
+		simulator.getSimulation().removeRequests(selectedRequests);
+		/** Refresh views **/
+		((RequestsTableModel) requestsTable.getModel()).refreshTableData();
+	}
+
+	/** Remove selected requests from the simulator
+	 * if simulatorContentPane == null, action is called by right clicking
+	 * and there is no error control needed. Else it is called by pressing
+	 * delete and error control is needed **/
+	public static void removeRequests(List<Request> selectedRequests,
+			Simulator simulator, 
+			JTabbedPane graphViewerTabbedPane,
+			JTable requestsTable,
+			JPanel simulatorContentPane) {
+		
+		if (simulatorContentPane!=null) {
+			// check if selected requests can be removed (available)
+			for (Request request : selectedRequests) {
+				if (!request.getState().equals(SimulatorConstants.STATUS_AVAILABLE)) {
+					JOptionPane.showMessageDialog(simulatorContentPane, 
+							"Requests in a simulation can not be removed",
+		                    "Simulation requests", 1);
+					return;
+				}
+			}
+		}
+		
+		simulator.removeRequests(selectedRequests);
+		
+		/** Refresh views **/
+		// remove graph view (if opened)
+		for (Request req : selectedRequests) {
+			int index = graphViewerTabbedPane.indexOfTab(req.getId());
+			if (index!=-1) {
+				graphViewerTabbedPane.remove(index);
+			}
+		}
+		// refresh requests table
+		((RequestsTableModel) requestsTable.getModel()).refreshTableData();
+		
+		
+	}
+
+	/** Change the substrate of the current simulation **/
+	public static void changeSimulationSubstrate(
+			List<Substrate> selectedSubstrates, Simulator simulator,
+			JTable substratesTable) {
+		if (simulator.getSimulation()==null) return;
+		simulator.getSimulation().changeSubstrate(selectedSubstrates.get(0));
+		/** Refresh views **/
+		((SubstratesTableModel) substratesTable.getModel()).refreshTableData();
+	}
+
+	/** Remove selected substrates from the simulator
+	 * if simulatorContentPane == null, action is called by right clicking
+	 * and there is no error control needed. Else it is called by pressing
+	 * delete and error control is needed **/
+	public static void removeSubstrates(List<Substrate> selectedSubstrates,
+			Simulator simulator, JTabbedPane graphViewerTabbedPane,
+			JTable substratesTable,
+			JPanel simulatorContentPane) {
+		
+		if (simulatorContentPane!=null) {
+			// check if selected substrates can be removed (available)
+			for (Substrate substrate : selectedSubstrates) {
+				if (!substrate.getState().equals(SimulatorConstants.STATUS_AVAILABLE)) {
+					JOptionPane.showMessageDialog(simulatorContentPane, 
+							"Substrate in a simulation can not be removed",
+		                    "Simulation substrate", 1);
+					return;
+				}
+			}
+		}
+		
+		simulator.removeSubstrates(selectedSubstrates);
+		
+		/** Refresh views **/
+		// remove graph view (if opened)
+		for (Substrate subs : selectedSubstrates) {
+			int index = graphViewerTabbedPane.indexOfTab(subs.getId());
+			if (index!=-1) {
+				graphViewerTabbedPane.remove(index);
+			}
+		}
+		// refresh substrates table
+		((SubstratesTableModel) substratesTable.getModel()).refreshTableData();
+	}
+
+	/** Change the algorithm of the current simulation **/
+	public static void changeSimulationAlgorithm(
+			List<Algorithm> selectedAlgorithms, Simulator simulator,
+			JTable algorithmsTable) {
+		if (simulator.getSimulation()==null) return;
+		simulator.getSimulation().changeAlgorithm(selectedAlgorithms.get(0));
+		/** Refresh views **/
+		((AlgorithmsTableModel) algorithmsTable.getModel()).refreshTableData();
+	}
+	
+	/** Remove selected algorithms from the simulator
+	 * if simulatorContentPane == null, action is called by right clicking
+	 * and there is no error control needed. Else it is called by pressing
+	 * delete and error control is needed **/
+	public static void removeAlgorithms(List<Algorithm> selectedAlgorithms,
+			Simulator simulator, JTabbedPane graphViewerTabbedPane,
+			JTable algorithmsTable,
+			JPanel simulatorContentPane) {
+		
+		if (simulatorContentPane!=null) {
+			// check if selected algorithms can be removed (available)
+			for (Algorithm algorithm : selectedAlgorithms) {
+				if (!algorithm.getState().equals(SimulatorConstants.STATUS_AVAILABLE)) {
+					JOptionPane.showMessageDialog(simulatorContentPane, 
+							"Algorithm in a simulation can not be removed",
+		                    "Simulation algorithm", 1);
+					return;
+				}
+			}
+		}
+		
+		simulator.removeAlgorithms(selectedAlgorithms);
+		
+		/** Refresh views **/
+		// remove graph view (if opened)
+		for (Algorithm alg : selectedAlgorithms) {
+			int index = graphViewerTabbedPane.indexOfTab(alg.getId());
+			if (index!=-1) {
+				graphViewerTabbedPane.remove(index);
+			}
+		}
+		// refresh algorithms table
+		((AlgorithmsTableModel) algorithmsTable.getModel()).refreshTableData();
+	}
+}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    

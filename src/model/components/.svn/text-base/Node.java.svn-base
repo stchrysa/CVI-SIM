@@ -1,0 +1,189 @@
+package model.components;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+
+import javax.swing.Icon;
+
+/**
+ * Node Class. Superclass of RequestSwitch, RequestRouter, VirtualMachine,
+ * SubstrateSwitch, SubstrateRouter and Server
+ */
+public class Node {
+	
+	public enum SO {Linux, Windows, Solaris, Android};
+	public enum NetStack {TCPIP, UDPIP, IPATM, IPEthernet}
+	public enum Location {Europe, NorthAmerica, 
+		SouthAmerica, Asia, Australia, Africa, Portugal, Spain, Ireland,
+		Switzerland, Italy, Greece, Hungary, Germany, Czech_Republic,
+		Poland, Denmark, Sweden}
+	
+	protected Icon icon;
+	protected Icon smallIcon;
+	protected Icon pickedIcon;
+	
+	protected int id;
+	/** name for visualization **/
+	protected String name;
+	protected int cpu;
+	protected int memory;
+	/** Number of VLANs **/
+	protected int vlans;
+	/** Operating System **/
+	protected SO so;
+	/** Network Stack **/
+	protected NetStack netStack;
+	/** Geographical location **/
+	protected Location location;
+	/** Interfaces of the node **/
+	protected List<Interface> interfaces;
+	
+	public Node(int id) {
+		this.id = id;
+		/** Default SO **/
+		so = SO.Linux;
+		/** Default Network Stack **/
+		netStack = NetStack.TCPIP;
+		/** Default Location **/
+		location = Location.Europe;
+		interfaces = new ArrayList<Interface>();
+	}
+	
+	public Icon getIcon() {
+		return icon;
+	}
+
+	public void setIcon(Icon icon) {
+		this.icon = icon;
+	}
+	
+	public Icon getSmallIcon() {
+		return smallIcon;
+	}
+
+	public void setSmallIcon(Icon smallIcon) {
+		this.smallIcon = smallIcon;
+	}
+
+	public Icon getPickedIcon() {
+		return pickedIcon;
+	}
+
+	public void setPickedIcon(Icon pickedIcon) {
+		this.pickedIcon = pickedIcon;
+	}
+	
+	public SO getSo() {
+		return so;
+	}
+
+	public void setSo(SO so) {
+		this.so = so;
+	}
+
+	public NetStack getNetStack() {
+		return netStack;
+	}
+
+	public void setNetStack(NetStack netStack) {
+		this.netStack = netStack;
+	}
+
+	public Location getLocation() {
+		return location;
+	}
+
+	public void setLocation(Location location) {
+		this.location = location;
+	}
+
+	public List<Interface> getInterfaces() {
+		return interfaces;
+	}
+
+	public void setInterfaces(List<Interface> interfaces) {
+		this.interfaces = interfaces;
+	}
+
+	public void addInterface(Interface iface) {
+		this.interfaces.add(iface);
+	}
+	
+	public void removeInterface(Interface iface) {
+		this.interfaces.remove(iface);
+	}
+	
+	public int getId() {
+		return id;
+	}
+
+	public void setId(int id) {
+		this.id = id;
+	}
+	
+	public String getName() {
+		return name;
+	}
+
+	public void setName(String name) {
+		this.name = name;
+	}
+
+	public int getCpu() {
+		return cpu;
+	}
+
+	public void setCpu(int cpu) {
+		this.cpu = cpu;
+	}
+
+	public int getVlans() {
+		return vlans;
+	}
+
+	public void setVlans(int vlans) {
+		this.vlans = vlans;
+	}
+	
+	public int getMemory() {
+		return memory;
+	}
+
+	public void setMemory(int memory) {
+		this.memory = memory;
+	}
+
+	/** empty function rewrite on subclasses **/
+	public int getAvailableCpu() {
+		return 0;
+	}
+	
+	/** empty function rewrite on subclasses **/
+	public int getAvailableMemory() {
+		return 0;
+	}
+	
+	/** empty function rewrite on subclasses 
+	 * @param links **/
+	public int getAvailableVlans(Collection<Link> links) {
+		return 0;
+	}
+	
+	public String toString() {
+		return Integer.toString(id);
+	}
+
+	public Interface getInterfaceByName(String ifaceName) {
+		for (Interface iface : interfaces)
+			if (iface.getName().equals(ifaceName))
+				return iface;
+		return null;
+	}
+	
+	/** dummy getCopy. Subclass getCopy will be called **/
+	public Object getCopy() {
+		return null;
+	}
+	
+}

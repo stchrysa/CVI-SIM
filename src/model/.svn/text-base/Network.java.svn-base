@@ -1,0 +1,67 @@
+package model;
+
+import org.apache.commons.collections15.Factory;
+
+import model.components.Link;
+import model.components.Node;
+import edu.uci.ics.jung.graph.Graph;
+import edu.uci.ics.jung.graph.SparseMultigraph;
+import gui.SimulatorConstants;
+
+/**
+ * Network Class. Superclass of Request and Substrate.
+ */
+public class Network {
+	protected String id;
+	protected Graph<Node, Link> graph;
+	protected Factory nodeFactory;
+	protected Factory linkFactory;
+	protected String state;
+	
+	public Network(String id) {
+		this.id = id;
+		this.state = SimulatorConstants.STATUS_AVAILABLE;
+		graph = new NetworkGraph();
+	}
+
+	public String getId() {
+		return id;
+	}
+
+	public void setId(String id) {
+		this.id = id;
+	}
+
+	public Graph<Node, Link> getGraph() {
+		return graph;
+	}
+
+	public void setGraph(Graph<Node, Link> graph) {
+		this.graph = graph;
+	}
+
+	public String getState() {
+		return state;
+	}
+
+	public void setState(String state) {
+		this.state = state;
+	}
+
+	public Factory getNodeFactory() {
+		return nodeFactory;
+	}
+
+	public void setNodeFactory(Factory nodeFactory) {
+		this.nodeFactory = nodeFactory;
+	}
+
+	public Factory getLinkFactory() {
+		return linkFactory;
+	}
+
+	public void setLinkFactory(Factory linkFactory) {
+		this.linkFactory = linkFactory;
+	}
+
+}

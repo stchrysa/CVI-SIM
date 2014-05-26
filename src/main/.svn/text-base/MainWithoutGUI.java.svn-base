@@ -1,0 +1,179 @@
+package main;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import edu.uci.ics.jung.graph.util.EdgeType;
+import edu.uci.ics.jung.graph.util.Pair;
+import gui.SimulatorConstants;
+
+import model.Algorithm;
+import model.Request;
+import model.Simulation;
+import model.Substrate;
+import model.components.Link;
+import model.components.Node;
+import model.components.RequestRouter;
+import model.components.RequestSwitch;
+import model.components.Server;
+import model.components.SubstrateRouter;
+import model.components.SubstrateSwitch;
+import model.components.VirtualMachine;
+
+public class MainWithoutGUI {
+
+	public static void main(String[] args) {
+	    
+		Request request = new Request("request");
+		List<Request> requests = new ArrayList<Request>();
+		requests.add(request);
+	    Substrate substrate = new Substrate("substrate");
+	    Algorithm algorithm = new Algorithm("rVine");
+	    
+	    /*substrate: 5 servers, 3 routers, 1 switch 
+	     * vn: 2 vms, 4 servers, 1 switch*/
+	    
+	    // Hardcoded Request 
+	    // router0
+	    RequestRouter router0 = new RequestRouter(2);
+	    router0.setCpu(20);
+	    router0.setMemory(20);
+	    // router1
+	    RequestRouter router1 = new RequestRouter(4);
+	    router1.setCpu(20);
+	    router1.setMemory(20);
+	    // vm0
+	    VirtualMachine vm0 = new VirtualMachine(0);
+	    vm0.setCpu(21);
+	    vm0.setMemory(20);
+	    vm0.setDiskSpace(20);
+	    // vm1
+	    VirtualMachine vm1 = new VirtualMachine(1);
+	    vm1.setCpu(21);
+	    vm1.setMemory(20);
+	    vm1.setDiskSpace(20);
+	    //vm2
+	    VirtualMachine vm2 = new VirtualMachine(5);
+	    vm2.setCpu(22);
+	    vm2.setMemory(20);
+	    vm2.setDiskSpace(20);
+	    // vm3
+	    VirtualMachine vm3 = new VirtualMachine(6);
+	    vm3.setCpu(22);
+	    vm3.setMemory(20);
+	    vm3.setDiskSpace(20);
+	    // switch1
+	    RequestSwitch switch1 = new RequestSwitch(3);
+	    switch1.setCpu(20);
+	    switch1.setMemory(20);
+	    switch1.setVlans(10);
+	    // Links
+	    Link l1 = new Link(0,50);
+	    Link l2 = new Link(1,50);
+	    Link l3 = new Link(2,50);
+	    Link l4 = new Link(3,50);
+	    Link l5 = new Link(4,50);
+	    Link l6 = new Link(5,50);
+	    
+	    // Adding links & interfaces
+	    request.getGraph().addEdge(l1,new Pair<Node>(vm0,router0), EdgeType.UNDIRECTED);
+	    request.getGraph().addEdge(l2,new Pair<Node>(vm1, router0), EdgeType.UNDIRECTED);
+	    request.getGraph().addEdge(l3,new Pair<Node>(router0, switch1), EdgeType.UNDIRECTED);
+	    request.getGraph().addEdge(l4,new Pair<Node>(switch1, router1), EdgeType.UNDIRECTED);
+	    request.getGraph().addEdge(l5,new Pair<Node>(router1, vm2), EdgeType.UNDIRECTED);
+	    request.getGraph().addEdge(l6,new Pair<Node>(router1, vm3), EdgeType.UNDIRECTED);
+	    
+	    
+	    // Hardcoded Substrate
+	    // Server0
+	    Server server0 = new Server(7);
+	    server0.setCpu(100);
+	    server0.setMemory(100);
+	    server0.setDiskSpace(100);
+	    server0.setVlans(SimulatorConstants.MAX_SERVER_VLANS);
+	    // Server1
+	    Server server1 = new Server(8);
+	    server1.setCpu(101);
+	    server1.setMemory(100);
+	    server1.setDiskSpace(100);
+	    server1.setVlans(SimulatorConstants.MAX_SERVER_VLANS);
+	    // Server2
+	    Server server2 = new Server(13);
+	    server2.setCpu(102);
+	    server2.setMemory(100);
+	    server2.setDiskSpace(100);
+	    server2.setVlans(SimulatorConstants.MAX_SERVER_VLANS);
+	    // Server3
+	    Server server3 = new Server(14);
+	    server3.setCpu(102);
+	    server3.setMemory(100);
+	    server3.setDiskSpace(100);
+	    server3.setVlans(SimulatorConstants.MAX_SERVER_VLANS);
+        // Server4
+	    Server server4 = new Server(15);
+	    server4.setCpu(103);
+	    server4.setMemory(100);
+	    server4.setDiskSpace(100);
+	    server4.setVlans(SimulatorConstants.MAX_SERVER_VLANS);
+	    
+	    // Router1
+	    SubstrateRouter sr1 = new SubstrateRouter(9);
+	    sr1.setCpu(103);
+	    sr1.setMemory(100);
+	    sr1.setVlans(SimulatorConstants.MAX_ROUTER_VLANS);
+	    // Router2
+	    SubstrateRouter sr2 = new SubstrateRouter(11);
+	    sr2.setCpu(100);
+	    sr2.setMemory(100);
+	    sr2.setVlans(SimulatorConstants.MAX_ROUTER_VLANS);
+	    // Router3
+	    SubstrateRouter sr3 = new SubstrateRouter(12);
+	    sr3.setCpu(100);
+	    sr3.setMemory(100);
+	    sr3.setVlans(SimulatorConstants.MAX_ROUTER_VLANS);
+	    
+	    // Switch1
+	    SubstrateSwitch ss1 = new SubstrateSwitch(10);
+	    ss1.setCpu(100);
+	    ss1.setMemory(100);
+	    ss1.setVlans(SimulatorConstants.MAX_SWITCH_VLANS);
+	    
+	    // Links
+	    Link sl1 = new Link(0,200);
+	    Link sl2 = new Link(1,200);
+	    Link sl3 = new Link(2,200);
+	    Link sl4 = new Link(3,200);
+	    Link sl5 = new Link(4,200);
+	    Link sl6 = new Link(5,200);
+	    Link sl7 = new Link(6,200);
+	    Link sl8 = new Link(7,200);
+	    Link sl9 = new Link(8,200);
+	    
+	    // Adding links & interfaces
+	    substrate.getGraph().addEdge(sl1,new Pair<Node>(server0, sr1), EdgeType.UNDIRECTED);
+	    substrate.getGraph().addEdge(sl2,new Pair<Node>(server1, sr1), EdgeType.UNDIRECTED);
+	    substrate.getGraph().addEdge(sl3,new Pair<Node>(sr1, ss1), EdgeType.UNDIRECTED);
+	    substrate.getGraph().addEdge(sl4,new Pair<Node>(ss1, sr2), EdgeType.UNDIRECTED);
+	    substrate.getGraph().addEdge(sl5,new Pair<Node>(ss1, sr3), EdgeType.UNDIRECTED);
+	    substrate.getGraph().addEdge(sl6,new Pair<Node>(sr2, server3), EdgeType.UNDIRECTED);
+	    substrate.getGraph().addEdge(sl7,new Pair<Node>(sr2, server2), EdgeType.UNDIRECTED);
+	    substrate.getGraph().addEdge(sl8,new Pair<Node>(sr3, server2), EdgeType.UNDIRECTED);
+	    substrate.getGraph().addEdge(sl9,new Pair<Node>(sr3, server4), EdgeType.UNDIRECTED);
+	    
+	    // Creating simulation
+	    Simulation simulation = new Simulation(substrate, requests, algorithm);
+	    launchLaunchSimulation(simulation);
+	    
+	}
+	
+	private static void launchLaunchSimulation(Simulation simulation) {
+		int ret = 0;
+		List<Request> requests = simulation.getRequests();
+		Substrate substrate = simulation.getSubstrate();
+		Algorithm algorithm = simulation.getAlgorithm();
+		//chrisap
+		algorithm.addSubstrate(substrate);
+		algorithm.addRequests(requests);
+		algorithm.runAlgorithm();	
+	}
+}

@@ -1,0 +1,46 @@
+package model.components;
+
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * SubstrateLink Class. Subclass of Link.
+ */
+public class SubstrateLink extends Link {
+	
+	private List<RequestLink> virtualLinks;
+	
+	public SubstrateLink(int id, int bandwidth) {
+		super(id, bandwidth);
+		name = "substrateLink"+id;
+		virtualLinks = new ArrayList<RequestLink>();
+	}
+
+	public List<RequestLink> getVirtualLinks() {
+		return virtualLinks;
+	}
+	
+	public void setVirtualLinks(List<RequestLink> virtualLinks) {
+		this.virtualLinks = virtualLinks;
+	}
+
+	public int getAvailableBandwidth() {
+		int returnValue = this.getBandwidth();
+		for (RequestLink link : virtualLinks)
+			returnValue-=link.getBandwidth();
+		return returnValue;
+	}
+	
+	public Object getCopy() {
+		SubstrateLink l = new SubstrateLink(this.getId(),this.getBandwidth());
+		l.name = this.name;
+		l.delay = this.delay;
+//		l.endpoint1 = (Interface) this.endpoint1.getCopy();
+//		l.endpoint2 = (Interface) this.endpoint2.getCopy();
+//		for (RequestLink sl : this.virtualLinks) {
+//			l.virtualLinks.add((RequestLink) sl.getCopy());
+//		}
+		return l;
+	}
+	
+}

@@ -1,0 +1,808 @@
+package gui;
+
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.ComponentOrientation;
+import java.awt.Dimension;
+import java.awt.Font;
+import java.awt.SystemColor;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.KeyEvent;
+import java.awt.event.KeyListener;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.beans.PropertyChangeListener;
+import java.util.ArrayList;
+import java.util.List;
+
+import javax.swing.AbstractAction;
+import javax.swing.Action;
+import javax.swing.BorderFactory;
+import javax.swing.JButton;
+import javax.swing.JFrame;
+import javax.swing.JMenu;
+import javax.swing.JMenuBar;
+import javax.swing.JMenuItem;
+import javax.swing.JPanel;
+import javax.swing.JPopupMenu;
+import javax.swing.JScrollPane;
+import javax.swing.JSlider;
+import javax.swing.JSplitPane;
+import javax.swing.JTabbedPane;
+import javax.swing.JTable;
+import javax.swing.JToolBar;
+import javax.swing.KeyStroke;
+import javax.swing.ListSelectionModel;
+import javax.swing.UIManager;
+
+import controller.GUIController;
+
+import model.Algorithm;
+import model.Network;
+import model.Request;
+import model.Simulator;
+import model.Substrate;
+import model.components.Link;
+import model.components.Node;
+import edu.uci.ics.jung.algorithms.layout.FRLayout2;
+import edu.uci.ics.jung.algorithms.layout.Layout;
+import gui.components.ButtonTabComponent;
+import gui.components.GraphViewerPanel;
+import gui.components.tables.AlgorithmsPopupMenu;
+import gui.components.tables.AlgorithmsTableModel;
+import gui.components.tables.RequestsPopupMenu;
+import gui.components.tables.RequestsTableModel;
+import gui.components.tables.SimulatorTableRenderer;
+import gui.components.tables.SubstratesPopupMenu;
+import gui.components.tables.SubstratesTableModel;
+
+public class MainWindow extends JFrame {
+	
+	// Model variables
+	private Simulator simulator;
+	
+	// View
+	private static final long serialVersionUID = 1L;
+	private JPanel simulatorContentPane = null;
+	private JMenuBar simulatorMenuBar = null;
+	private JMenu fileMenu = null;
+	private JMenuItem createSimulationMenuItem = null;
+	private JMenu simulatorMenu = null;
+	private JMenu helpMenu = null;
+	private JMenuItem aboutMenuItem = null;
+	private JMenuItem exitMenuItem = null;
+	private JMenuItem openSimulationMenuItem = null;
+	private JMenuItem saveSimulationMenuItem = null;
+	private JMenuItem createRequestMenuItem = null;
+	private JMenuItem createSubstrateMenuItem = null;
+	private JMenuItem launchMenuItem = null;
+	private JMenuItem substrateStatusMenuItem = null;
+	private JMenuItem requestStatusMenuItem = null;
+	private JMenuItem resourceStatusMenuItem = null;
+	private JToolBar simulatorToolBar = null;
+	private JButton saveToolBarButton = null;
+	//GraphViewerPanel Inherits from JPanel
+	private GraphViewerPanel graphViewerPanel = null;
+	private JSplitPane simulatorSplitPane = null;
+	private JTabbedPane simulatorTabbedPane = null;
+	private JScrollPane requestsScrollPane = null;
+	private JTable requestsTable = null;
+	private RequestsTableModel requestsTableModel = null;
+	private JScrollPane substratesScrollPane = null;
+	private JTable substratesTable = null;
+	private SubstratesTableModel substratesTableModel = null;
+	private JScrollPane algorithmsScrollPane = null;
+	private JTable algorithmsTable = null;
+	private AlgorithmsTableModel algorithmsTableModel = null;
+	private JSlider simulatorSlider = null;
+	private JTabbedPane graphViewerTabbedPane = null;
+	
+	/**
+	 * Default constructor
+	 */
+	public MainWindow() {
+		super();
+		MainWindow.setNativeLookAndFeel();
+		initialize();
+		// To center the MainWindow
+		this.setLocationRelativeTo(null);
+	}
+
+	/**
+	 * This sets LAF to the simulator
+	 */
+	public static void setNativeLookAndFeel() {
+		try {
+			UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+		} catch(Exception e) {
+			System.out.println("Error setting native LAF: " + e);
+		}
+	}
+	
+	/**
+	 * This method initializes this
+	 * 
+	 * @return void
+	 */
+	private void initialize() {
+		//init simulator model
+		simulator = new Simulator();
+		
+		this.setSize(901, 645);
+		this.setJMenuBar(getSimulatorMenuBar());
+		this.setContentPane(getSimulatorContentPane());
+		this.setTitle("Resource Allocation Simulator");
+	}
+
+	/**
+	 * This method initializes jContentPane
+	 * 
+	 * @return javax.swing.JPanel
+	 */
+	private JPanel getSimulatorContentPane() {
+		if (simulatorContentPane == null) {
+			simulatorContentPane = new JPanel();
+			simulatorContentPane.setLayout(new BorderLayout());
+			simulatorContentPane.add(getSimulatorToolBar(), BorderLayout.NORTH);
+			simulatorContentPane.add(getSimulatorSplitPane(), BorderLayout.CENTER);
+			simulatorContentPane.add(getSimulatorSlider(), BorderLayout.SOUTH);
+		}
+		return simulatorContentPane;
+	}
+
+	/**
+	 * This method initializes jJMenuBar	
+	 * 	
+	 * @return javax.swing.JMenuBar	
+	 */
+	private JMenuBar getSimulatorMenuBar() {
+		if (simulatorMenuBar == null) {
+			simulatorMenuBar = new JMenuBar();
+			simulatorMenuBar.setPreferredSize(new Dimension(1, 21));
+			simulatorMenuBar.add(getFileMenu());
+			simulatorMenuBar.add(getSimulatorMenu());
+			simulatorMenuBar.add(getHelpMenu());
+		}
+		return simulatorMenuBar;
+	}
+
+	/**
+	 * This method initializes fileMenu	
+	 * 	
+	 * @return javax.swing.JMenu	
+	 */
+	private JMenu getFileMenu() {
+		if (fileMenu == null) {
+			fileMenu = new JMenu();
+			fileMenu.setText("File");
+			fileMenu.setMnemonic(KeyEvent.VK_F);
+			fileMenu.add(getCreateSimulationMenuItem());
+			fileMenu.add(getOpenSimulationMenuItem());
+			fileMenu.add(getSaveSimulationMenuItem());
+			fileMenu.addSeparator();
+			fileMenu.add(getExitMenuItem());
+		}
+		return fileMenu;
+	}
+
+	/**
+	 * This method initializes CreateSimulationMenuItem	
+	 * 	
+	 * @return javax.swing.JMenuItem	
+	 */
+	private JMenuItem getCreateSimulationMenuItem() {
+		if (createSimulationMenuItem == null) {
+			createSimulationMenuItem = new JMenuItem();
+			createSimulationMenuItem.setText("Create simulation");
+			createSimulationMenuItem.setMnemonic(KeyEvent.VK_C);
+		}
+		createSimulationMenuItem.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				//Open and execute create simulation wizard
+				int ret = GUIController.launchCreateSimulationWizard(simulator, simulatorContentPane, 
+						requestsTable, substratesTable, algorithmsTable);
+				//Enable needed components
+				if (ret==0)
+					launchMenuItem.setEnabled(true);
+			}
+		});
+		return createSimulationMenuItem;
+	}
+
+	/**
+	 * This method initializes simulatorMenu	
+	 * 	
+	 * @return javax.swing.JMenu	
+	 */
+	private JMenu getSimulatorMenu() {
+		if (simulatorMenu == null) {
+			simulatorMenu = new JMenu();
+			simulatorMenu.setText("Simulator");
+			simulatorMenu.setMnemonic(KeyEvent.VK_I);
+			simulatorMenu.add(getCreateRequestMenuItem());
+			simulatorMenu.add(getCreateSubstrateMenuItem());
+			simulatorMenu.addSeparator();
+			simulatorMenu.add(getLaunchMenuItem());
+			simulatorMenu.addSeparator();
+			simulatorMenu.addSeparator();
+			simulatorMenu.add(getRequestStatusMenuItem());
+			simulatorMenu.add(getSubstrateStatusMenuItem());
+			simulatorMenu.add(getResourceStatusMenuItem());
+		}
+		return simulatorMenu;
+	}
+
+	/**
+	 * This method initializes helpMenu	
+	 * 	
+	 * @return javax.swing.JMenu	
+	 */
+	private JMenu getHelpMenu() {
+		if (helpMenu == null) {
+			helpMenu = new JMenu();
+			helpMenu.setText("Help");
+			helpMenu.setMnemonic(KeyEvent.VK_H);
+			helpMenu.add(getAboutMenuItem());
+		}
+		return helpMenu;
+	}
+
+	/**
+	 * This method initializes aboutMenuItem	
+	 * 	
+	 * @return javax.swing.JMenuItem	
+	 */
+	private JMenuItem getAboutMenuItem() {
+		if (aboutMenuItem == null) {
+			aboutMenuItem = new JMenuItem();
+			aboutMenuItem.setText("About");
+			aboutMenuItem.setMnemonic(KeyEvent.VK_A);
+			// TODO About menu
+			aboutMenuItem.setEnabled(false);
+		}
+		return aboutMenuItem;
+	}
+
+	/**
+	 * This method initializes exitMenuItem	
+	 * 	
+	 * @return javax.swing.JMenuItem	
+	 */
+	private JMenuItem getExitMenuItem() {
+		if (exitMenuItem == null) {
+			exitMenuItem = new JMenuItem();
+			exitMenuItem.setText("Exit");
+			exitMenuItem.setMnemonic(KeyEvent.VK_X);
+		}
+		exitMenuItem.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				System.exit(0);
+			}
+		});
+		return exitMenuItem;
+	}
+
+	/**
+	 * This method initializes openSimulationMenuItem	
+	 * 	
+	 * @return javax.swing.JMenuItem	
+	 */
+	private JMenuItem getOpenSimulationMenuItem() {
+		if (openSimulationMenuItem == null) {
+			openSimulationMenuItem = new JMenuItem();
+			openSimulationMenuItem.setText("Open simulation");
+			openSimulationMenuItem.setMnemonic(KeyEvent.VK_O);
+			// TODO open simulation
+			openSimulationMenuItem.setEnabled(false);
+		}
+		return openSimulationMenuItem;
+	}
+
+	/**
+	 * This method initializes saveSimulationMenuItem	
+	 * 	
+	 * @return javax.swing.JMenuItem	
+	 */
+	private JMenuItem getSaveSimulationMenuItem() {
+		if (saveSimulationMenuItem == null) {
+			saveSimulationMenuItem = new JMenuItem();
+			saveSimulationMenuItem.setText("Save current simulation");
+			saveSimulationMenuItem.setIcon(Icons.SAVE);
+			saveSimulationMenuItem.setMnemonic(KeyEvent.VK_S);
+			// TODO save simulations 
+			saveSimulationMenuItem.setEnabled(false);
+		}
+		return saveSimulationMenuItem;
+	}
+
+	/**
+	 * This method initializes createRequestMenuItem	
+	 * 	
+	 * @return javax.swing.JMenuItem	
+	 */
+	private JMenuItem getCreateRequestMenuItem() {
+		if (createRequestMenuItem == null) {
+			createRequestMenuItem = new JMenuItem();
+			createRequestMenuItem.setText("Create requests");
+			createRequestMenuItem.setMnemonic(KeyEvent.VK_P);
+		}
+		createRequestMenuItem.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				// Open and execute create request wizard
+				GUIController.launchCreateRequestWizard(simulator, requestsTable);
+			}
+		});
+		return createRequestMenuItem;
+	}
+
+	/**
+	 * This method initializes createSubstrateMenuItem	
+	 * 	
+	 * @return javax.swing.JMenuItem	
+	 */
+	private JMenuItem getCreateSubstrateMenuItem() {
+		if (createSubstrateMenuItem == null) {
+			createSubstrateMenuItem = new JMenuItem();
+			createSubstrateMenuItem.setText("Create substrates");
+			createSubstrateMenuItem.setMnemonic(KeyEvent.VK_S);
+		}
+		createSubstrateMenuItem.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				// Open and execute create request wizard
+				GUIController.launchCreateSubstrateWizard(simulator, substratesTable);
+			}
+		});
+		return createSubstrateMenuItem;
+	}
+
+	/**
+	 * This method initializes launchMenuItem	
+	 * 	
+	 * @return javax.swing.JMenuItem	
+	 */
+	private JMenuItem getLaunchMenuItem() {
+		if (launchMenuItem == null) {
+			launchMenuItem = new JMenuItem();
+			launchMenuItem.setEnabled(false);
+			launchMenuItem.setText("Launch simulation");
+			launchMenuItem.setMnemonic(KeyEvent.VK_I);
+		}
+		launchMenuItem.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				//Open and execute the current simulation
+				GUIController.launchLaunchSimulation(simulator, 
+						simulatorContentPane, requestsTable);
+			}
+		});
+		return launchMenuItem;
+	}
+
+	/**
+	 * This method initializes substrateStatusMenuItem	
+	 * 	
+	 * @return javax.swing.JMenuItem	
+	 */
+	private JMenuItem getSubstrateStatusMenuItem() {
+		if (substrateStatusMenuItem == null) {
+			substrateStatusMenuItem = new JMenuItem();
+			substrateStatusMenuItem.setText("Get substrate status");
+			substrateStatusMenuItem.setMnemonic(KeyEvent.VK_B);
+			// TODO substrate status
+			substrateStatusMenuItem.setEnabled(false);
+		}
+		return substrateStatusMenuItem;
+	}
+
+	/**
+	 * This method initializes requestStatusMenuItem	
+	 * 	
+	 * @return javax.swing.JMenuItem	
+	 */
+	private JMenuItem getRequestStatusMenuItem() {
+		if (requestStatusMenuItem == null) {
+			requestStatusMenuItem = new JMenuItem();
+			requestStatusMenuItem.setText("Get request status");
+			requestStatusMenuItem.setMnemonic(KeyEvent.VK_T);
+			// TODO request status
+			requestStatusMenuItem.setEnabled(false);
+		}
+		return requestStatusMenuItem;
+	}
+
+	/**
+	 * This method initializes resourceStatusMenuItem	
+	 * 	
+	 * @return javax.swing.JMenuItem	
+	 */
+	private JMenuItem getResourceStatusMenuItem() {
+		if (resourceStatusMenuItem == null) {
+			resourceStatusMenuItem = new JMenuItem();
+			resourceStatusMenuItem.setText("Get resource status");
+			resourceStatusMenuItem.setMnemonic(KeyEvent.VK_R);
+			// TODO resources status
+			resourceStatusMenuItem.setEnabled(false);
+		}
+		return resourceStatusMenuItem;
+	}
+
+	/**
+	 * This method initializes simulatorToolBar	
+	 * 	
+	 * @return javax.swing.JToolBar	
+	 */
+	private JToolBar getSimulatorToolBar() {
+		if (simulatorToolBar == null) {
+			simulatorToolBar = new JToolBar();
+			simulatorToolBar.setPreferredSize(new Dimension(1, 28));
+			simulatorToolBar.setFloatable(false);
+			simulatorToolBar.setComponentOrientation(ComponentOrientation.UNKNOWN);
+			simulatorToolBar.setFont(new Font("Dialog", Font.BOLD, 12));
+			simulatorToolBar.add(getSaveToolBarButton());
+		}
+		return simulatorToolBar;
+	}
+
+	/**
+	 * This method initializes saveToolBarButton	
+	 * 	
+	 * @return javax.swing.JButton	
+	 */
+	private JButton getSaveToolBarButton() {
+		if (saveToolBarButton == null) {
+			saveToolBarButton = new JButton();
+			saveToolBarButton.setToolTipText("Save current simulation");
+			saveToolBarButton.setIcon(Icons.SAVE);
+			// TODO save simulation
+			saveToolBarButton.setEnabled(false);
+		}
+		return saveToolBarButton;
+	}
+
+	/**
+	 * This method gets graphViewerPanel of a given Network
+	 * @param graph 
+	 * 	
+	 * @return javax.swing.JPanel	
+	 */
+	private GraphViewerPanel getGraphViewerPanel(Network net) {
+		Layout<Node, Link> layout = new FRLayout2<Node, Link>(net.getGraph());
+		layout.setSize(new Dimension(300,300)); // sets the initial size of the space
+		graphViewerPanel = new GraphViewerPanel(layout, net.getNodeFactory(), net.getLinkFactory());
+		graphViewerPanel.setPreferredSize(new Dimension(300,300)); //Sets the viewing area size
+		graphViewerPanel.setBorder(BorderFactory.createLineBorder(SystemColor.activeCaption, 2));
+		graphViewerPanel.setBackground(Color.white);
+		return graphViewerPanel; 	
+	}
+
+	/**
+	 * This method initializes simulatorSplitPane	
+	 * 	
+	 * @return javax.swing.JSplitPane	
+	 */
+	private JSplitPane getSimulatorSplitPane() {
+		if (simulatorSplitPane == null) {
+			simulatorSplitPane = new JSplitPane();
+			simulatorSplitPane.setRightComponent(getGraphViewerTabbedPane());
+			simulatorSplitPane.setLeftComponent(getSimulatorTabbedPane());
+		}
+		return simulatorSplitPane;
+	}
+
+	/**
+	 * This method initializes simulatorTabbedPane	
+	 * 	
+	 * @return javax.swing.JTabbedPane	
+	 */
+	private JTabbedPane getSimulatorTabbedPane() {
+		if (simulatorTabbedPane == null) {
+			simulatorTabbedPane = new JTabbedPane();
+			simulatorTabbedPane.setTabPlacement(JTabbedPane.BOTTOM);
+			simulatorTabbedPane.setPreferredSize(new Dimension(200, 7));
+			simulatorTabbedPane.addTab("Requests", null, getRequestsScrollPane(), null);
+			simulatorTabbedPane.addTab("Substrates", null, getSubstratesScrollPane(), null);
+			simulatorTabbedPane.addTab("Algorithms", null, getAlgorithmsScrollPane(), null);
+		}
+		return simulatorTabbedPane;
+	}
+
+	/**
+	 * This method initializes requestsScrollPane	
+	 * 	
+	 * @return javax.swing.JScrollPane	
+	 */
+	private JScrollPane getRequestsScrollPane() {
+		if (requestsScrollPane == null) {
+			requestsScrollPane = new JScrollPane();
+			requestsScrollPane.setViewportView(getRequestsTable());
+		}
+		return requestsScrollPane;
+	}
+
+	/**
+	 * This method initializes requestsTable	
+	 * 	
+	 * @return javax.swing.JTable	
+	 */
+	private JTable getRequestsTable() {
+		if (requestsTable == null) {
+			//getting items from the simulator
+			String col[] = {"Requests","Start", "End", "State"};
+			requestsTableModel = new RequestsTableModel(col,0,simulator.getRequests());
+			for (Request request : simulator.getRequests()) {
+				requestsTableModel.addRow(new Object[]{request.getId(),
+						request.getStartDate(),
+						request.getEndDate(),request.getState()});
+			}
+			requestsTable = new JTable(requestsTableModel);
+			requestsTable.setDefaultRenderer(Object.class, new SimulatorTableRenderer());
+			requestsTable.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
+			// TODO add listener in order to add popupmenus (add/remove requests)
+//			requestsTable.getSelectionModel().addListSelectionListener(new RowListener());
+			
+		}
+		
+		requestsTable.addMouseListener(new MouseAdapter(){
+			//Double click listener -> Open  Request GraphViewer
+			public void mouseClicked(MouseEvent e){
+				if (e.getClickCount() == 2){
+					JTable target = (JTable)e.getSource();
+					int row = target.getSelectedRow();
+					Request p = simulator.getRequest((String) requestsTable.
+							getModel().getValueAt(row,0));
+					
+					GraphViewerPanel gv;
+					int index = graphViewerTabbedPane.indexOfTab(p.getId());
+					if (index==-1) {
+						gv = getGraphViewerPanel(p);
+						JPanel pane = new JPanel(new BorderLayout());
+						JMenuBar menuBar = new JMenuBar();
+				        JMenu modeMenu = gv.getGm().getModeMenu();
+				        modeMenu.setText("Mouse Mode");
+				        modeMenu.setPreferredSize(new Dimension(90,20)); // Change the size so I can see the text
+				        menuBar.add(modeMenu);
+						pane.add(gv, BorderLayout.CENTER);
+						pane.add(menuBar, BorderLayout.NORTH);
+						graphViewerTabbedPane.addTab(p.getId(), null, pane, null);
+						graphViewerTabbedPane.setTabComponentAt(graphViewerTabbedPane.getTabCount()-1, new ButtonTabComponent(graphViewerTabbedPane));
+						graphViewerTabbedPane.setSelectedComponent(pane);
+					} else {
+						graphViewerTabbedPane.setSelectedIndex(index);
+					}
+				}
+			}
+			//Right click listener -> Open popup menu
+			public void mouseReleased( MouseEvent e ) {
+				if ( e.isMetaDown() ) {  
+					int clickedRow = requestsTable.rowAtPoint(e.getPoint());
+					if (requestsTable.isRowSelected(clickedRow)) {
+						List<Request> selectedRequests = new ArrayList<Request>();
+						for (int i : requestsTable.getSelectedRows()) {
+							selectedRequests.add(simulator.getRequest((String) requestsTable.
+							getModel().getValueAt(i,0)));
+						}
+						//Open the popup
+						RequestsPopupMenu tableMenu = new RequestsPopupMenu(simulator,
+								simulatorContentPane,graphViewerTabbedPane,
+								selectedRequests, requestsTable);
+						tableMenu.show(requestsTable, e.getX(), e.getY());
+					}
+				}  
+			}
+		});
+		// Key bindings to requestsTable (remove requests) pressing DELETE
+		requestsTable.getInputMap().put(KeyStroke.getKeyStroke("DELETE"), "deleteRow");
+		requestsTable.getActionMap().put("deleteRow", new AbstractAction() {	
+			public void actionPerformed(ActionEvent arg0) {
+		    	List<Request> selectedRequests = new ArrayList<Request>();
+		    	for (int i : requestsTable.getSelectedRows()) {
+					selectedRequests.add(simulator.
+							getRequest((String) requestsTable.
+					getModel().getValueAt(i,0)));
+				}
+		    	GUIController.removeRequests(selectedRequests, 
+		    			simulator, graphViewerTabbedPane, 
+		    			requestsTable, simulatorContentPane);
+			}
+		});
+		return requestsTable;
+	}
+
+	/**
+	 * This method initializes substratesScrollPane	
+	 * 	
+	 * @return javax.swing.JScrollPane	
+	 */
+	private JScrollPane getSubstratesScrollPane() {
+		if (substratesScrollPane == null) {
+			substratesScrollPane = new JScrollPane();
+			substratesScrollPane.setName("");
+			substratesScrollPane.setViewportView(getSubstratesTable());
+		}
+		return substratesScrollPane;
+	}
+
+	/**
+	 * This method initializes substratesTable	
+	 * 	
+	 * @return javax.swing.JTable	
+	 */
+	private JTable getSubstratesTable() {
+		if (substratesTable == null) {
+			//getting items from the simulator
+			String col[] = {"Substrates","State"};
+			substratesTableModel = new SubstratesTableModel(col,0,simulator.getSubstrates());
+			for (Substrate s : simulator.getSubstrates()) {
+				substratesTableModel.addRow(new Object[]{s.getId(),s.getState()});
+			}
+			substratesTable = new JTable(substratesTableModel);
+			substratesTable.setDefaultRenderer(Object.class, new SimulatorTableRenderer());
+			substratesTable.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
+		}
+		
+		//Double click listener -> Open Substrate GraphViewer
+		substratesTable.addMouseListener(new MouseAdapter(){
+			public void mouseClicked(MouseEvent e){
+				if (e.getClickCount() == 2){
+					JTable target = (JTable)e.getSource();
+					int row = target.getSelectedRow();
+					Substrate s = simulator.getSubstrate((String) substratesTable.
+							getModel().getValueAt(row,0));
+					
+					GraphViewerPanel gv;
+					int index = graphViewerTabbedPane.indexOfTab(s.getId());
+					if (index==-1) {
+						gv = getGraphViewerPanel(s);
+						JPanel pane = new JPanel(new BorderLayout());
+						JMenuBar menuBar = new JMenuBar();
+				        JMenu modeMenu = gv.getGm().getModeMenu();
+				        modeMenu.setText("Mouse Mode");
+				        modeMenu.setPreferredSize(new Dimension(90,20)); // Change the size so I can see the text
+				        menuBar.add(modeMenu);
+						pane.add(gv, BorderLayout.CENTER);
+						pane.add(menuBar, BorderLayout.NORTH);
+						graphViewerTabbedPane.addTab(s.getId(), null, pane, null);
+						graphViewerTabbedPane.setTabComponentAt(graphViewerTabbedPane.getTabCount()-1, new ButtonTabComponent(graphViewerTabbedPane));
+						graphViewerTabbedPane.setSelectedComponent(pane);
+					} else {
+						graphViewerTabbedPane.setSelectedIndex(index);
+					}
+				}
+			}
+			//Right click listener -> Open popup menu
+			public void mouseReleased( MouseEvent e ) {
+				if ( e.isMetaDown() ) {  
+					int clickedRow = substratesTable.rowAtPoint(e.getPoint());
+					if (substratesTable.isRowSelected(clickedRow)) {
+						List<Substrate> selectedSubstrates = new ArrayList<Substrate>();
+						for (int i : substratesTable.getSelectedRows()) {
+							selectedSubstrates.add(simulator.getSubstrate((String) substratesTable.
+							getModel().getValueAt(i,0)));
+						}
+						//Open the popup
+						SubstratesPopupMenu tableMenu = new SubstratesPopupMenu(simulator,
+								simulatorContentPane,graphViewerTabbedPane,
+								selectedSubstrates, substratesTable);
+						tableMenu.show(substratesTable, e.getX(), e.getY());
+					}
+				}  
+			}
+		});
+		// Key bindings to substratesTable (remove substrates) pressing DELETE
+		substratesTable.getInputMap().put(KeyStroke.getKeyStroke("DELETE"), "deleteRow");
+		substratesTable.getActionMap().put("deleteRow", new AbstractAction() {	
+			public void actionPerformed(ActionEvent arg0) {
+		    	List<Substrate> selectedSubstrates = new ArrayList<Substrate>();
+		    	for (int i : substratesTable.getSelectedRows()) {
+					selectedSubstrates.add(simulator.
+							getSubstrate((String) substratesTable.
+							getModel().getValueAt(i,0)));
+				}
+		    	GUIController.removeSubstrates(selectedSubstrates, 
+		    			simulator, graphViewerTabbedPane, 
+		    			substratesTable, simulatorContentPane);
+			}
+		});
+		return substratesTable;
+	}
+
+	/**
+	 * This method initializes algorithmsScrollPane	
+	 * 	
+	 * @return javax.swing.JScrollPane	
+	 */
+	private JScrollPane getAlgorithmsScrollPane() {
+		if (algorithmsScrollPane == null) {
+			algorithmsScrollPane = new JScrollPane();
+			algorithmsScrollPane.setViewportView(getAlgorithmsTable());
+		}
+		return algorithmsScrollPane;
+	}
+
+	/**
+	 * This method initializes algorithmsTable	
+	 * 	
+	 * @return javax.swing.JTable	
+	 */
+	private JTable getAlgorithmsTable() {
+		if (algorithmsTable == null) {
+			//getting items from the simulator
+			String col[] = {"Algorithms","State"};
+			algorithmsTableModel = new AlgorithmsTableModel(col,0,simulator.getAlgorithms());
+			for (Algorithm a : simulator.getAlgorithms()) {
+				algorithmsTableModel.addRow(new Object[]{a.getId(),a.getState()});
+			}
+			algorithmsTable = new JTable(algorithmsTableModel);
+			algorithmsTable.setDefaultRenderer(Object.class, new SimulatorTableRenderer());
+			algorithmsTable.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
+		}
+		
+		algorithmsTable.addMouseListener(new MouseAdapter(){
+			//Right click listener -> Open popup menu
+			public void mouseReleased( MouseEvent e ) {
+				if ( e.isMetaDown() ) {  
+					int clickedRow = algorithmsTable.rowAtPoint(e.getPoint());
+					if (algorithmsTable.isRowSelected(clickedRow)) {
+						List<Algorithm> selectedAlgorithms = new ArrayList<Algorithm>();
+						for (int i : algorithmsTable.getSelectedRows()) {
+							selectedAlgorithms.add(simulator.getAlgorithm((String) algorithmsTable.
+							getModel().getValueAt(i,0)));
+						}
+						//Open the popup
+						AlgorithmsPopupMenu tableMenu = new AlgorithmsPopupMenu(simulator,
+								simulatorContentPane,graphViewerTabbedPane,
+								selectedAlgorithms, algorithmsTable);
+						tableMenu.show(algorithmsTable, e.getX(), e.getY());
+					}
+				}  
+			}
+		});
+		// Key bindings to algorithmsTable (remove algorithms) pressing DELETE
+		algorithmsTable.getInputMap().put(KeyStroke.getKeyStroke("DELETE"), "deleteRow");
+		algorithmsTable.getActionMap().put("deleteRow", new AbstractAction() {	
+			public void actionPerformed(ActionEvent arg0) {
+		    	List<Algorithm> selectedAlgorithms = new ArrayList<Algorithm>();
+		    	for (int i : algorithmsTable.getSelectedRows()) {
+					selectedAlgorithms.add(simulator.
+							getAlgorithm((String) algorithmsTable.
+							getModel().getValueAt(i,0)));
+				}
+		    	GUIController.removeAlgorithms(selectedAlgorithms, 
+		    			simulator, graphViewerTabbedPane, 
+		    			algorithmsTable, simulatorContentPane);
+			}
+		});
+		return algorithmsTable;
+	}
+
+	/**
+	 * This method initializes simulatorSlider	
+	 * 	
+	 * @return javax.swing.JSlider	
+	 */
+	private JSlider getSimulatorSlider() {
+		if (simulatorSlider == null) {
+			simulatorSlider = new JSlider();
+			simulatorSlider.setPaintLabels(true);
+			simulatorSlider.setPreferredSize(new Dimension(200, 35));
+			simulatorSlider.setName("");
+			simulatorSlider.setPaintTicks(true);
+		}
+		return simulatorSlider;
+	}
+
+	/**
+	 * This method initializes graphViewerTabbedPane	
+	 * 	
+	 * @return javax.swing.JTabbedPane	
+	 */
+	private JTabbedPane getGraphViewerTabbedPane() {
+		if (graphViewerTabbedPane == null) {
+			graphViewerTabbedPane = new JTabbedPane();
+			graphViewerTabbedPane.setTabPlacement(JTabbedPane.BOTTOM);
+		}
+		return graphViewerTabbedPane;
+	}
+
+}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            

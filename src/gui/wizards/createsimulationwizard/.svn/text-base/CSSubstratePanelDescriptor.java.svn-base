@@ -1,0 +1,59 @@
+package gui.wizards.createsimulationwizard;
+
+import java.util.List;
+
+import javax.swing.event.ListSelectionEvent;
+import javax.swing.event.ListSelectionListener;
+
+import model.Substrate;
+
+import com.nexes.wizard.WizardPanelDescriptor;
+
+public class CSSubstratePanelDescriptor extends WizardPanelDescriptor implements ListSelectionListener {
+	
+	public static final String IDENTIFIER = "CS_SUBSTRATE_PANEL";
+	
+	CSSubstratePanel substratePanel;
+	List<Substrate> substrates;
+	Substrate selectedSubstrate;
+    
+    public CSSubstratePanelDescriptor(List<Substrate> substrates) {
+    	this.substrates = substrates;
+    	substratePanel = new CSSubstratePanel(substrates);
+    	substratePanel.addListeners(this);
+        setPanelDescriptorIdentifier(IDENTIFIER);
+        setPanelComponent(substratePanel);
+    }
+    
+    // Decide next wizard panel
+    public Object getNextPanelDescriptor() {
+		return CSAlgorithmPanelDescriptor.IDENTIFIER;
+    }
+    
+    public Object getBackPanelDescriptor() {
+        return CSRequestsPanelDescriptor.IDENTIFIER;
+    }
+    
+    public void aboutToDisplayPanel() {
+        setNextButtonEnabled();
+    }    
+	
+	/** Attend list selection **/
+	@Override
+	public void valueChanged(ListSelectionEvent evt) {
+		setNextButtonEnabled();
+	}
+
+    private void setNextButtonEnabled() {
+    	if (substratePanel.canFinish()) {
+    		// Setting substrate on the wizard
+    		selectedSubstrate = substratePanel.getSelectedSubstrate();
+    		((CSWizard) getWizard()).setSelectedSubstrate(selectedSubstrate);
+    		getWizard().setNextFinishButtonEnabled(true);
+    	}
+    	else
+    		getWizard().setNextFinishButtonEnabled(false);         
+    }
+
+}
+

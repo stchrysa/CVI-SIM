@@ -1,0 +1,107 @@
+package gui.simulation;
+
+import java.awt.Color;
+import java.awt.Toolkit;
+import java.util.List;
+import java.util.Random;
+
+import javax.swing.JDialog;
+import javax.swing.SwingWorker;
+
+import model.Algorithm;
+import model.Request;
+import model.Simulation;
+import model.Substrate;
+
+public class SimulationWork extends SwingWorker {
+
+	private Simulation simulation;
+	private List<Request> requests;
+	private Algorithm algorithm;
+	private Substrate substrate;
+	SimulationFrame simulationFrame;
+	
+	public SimulationWork(Simulation simulation) {
+		this.simulation = simulation;
+		this.requests = simulation.getRequests();
+		this.substrate = simulation.getSubstrate();
+		this.algorithm = simulation.getAlgorithm();
+		// Setting substrate to the algorithm
+		this.algorithm.addSubstrate(this.substrate);
+	}
+
+	@Override
+	protected Object doInBackground() throws Exception {
+		// TODO add a return value
+
+		setProgress(0);
+
+		// Give total time of the simulation
+		int simulationTime = simulation.getEndDate();
+		// Sizing progress bar
+		simulationFrame.getProgressBar().setMinimum(0);
+		simulationFrame.getProgressBar().setValue(0);
+		simulationFrame.getProgressBar().setMaximum(simulationTime);
+		
+		List<Request> endingRequests;
+		List<Request> startingRequests;
+		/** for each unit of time we first release ended requests
+		 * and then we send to the algorithm starting requests
+		 * to perform the allocation of their resources **/
+		for (int i=0; i<=simulationTime; i++) {
+			// Release ended simulations
+			endingRequests = simulation.getEndingRequests(i);
+			for (Request req : endingRequests)
+				simulationFrame.addProgressText(Color.BLACK, "Releasing request "+req.getId()+"...\n");
+			simulation.releaseRequests(endingRequests);
+			// Allocate arriving simulations
+			startingRequests = simulation.getStartingRequests(i);
+			for (Request req : startingRequests)
+				simulationFrame.addProgressText(Color.BLACK, "Allocating request "+req.getId()+"...\n");
+			algorithm.addRequests(startingRequests);
+//			algorithm.runAlgorithm();
+			Thread.sleep(2000);
+			// Progress++
+			setProgress(100*i/simulationTime);
+			System.out.println("Progress: "+getProgress());
+			simulationFrame.addProgressText(Color.BLACK, "Simulation time "+i+" done\n");
+			simulationFrame.getProgressBar().setValue(i+1);
+		}
+		
+//		Random random = new Random();
+//        int progress = 0;
+//        setProgress(0);
+//        try {
+//            Thread.sleep(1000);
+//            while (progress < 100 && !isCancelled()) {
+//                //Sleep for up to one second.
+//                Thread.sleep(random.nextInt(1000));
+//                //Make random progress.
+//                progress += random.nextInt(10);
+//                setProgress(Math.min(progress, 100));
+//            }
+//        } catch (InterruptedException ignore) {}
+        
+        return null;
+	}
+	
+	 /*
+     * Executed in event dispatching thread
+     */
+    @Override
+    public void done() {
+    	Toolkit.getDefaultToolkit().beep();
+    	if (!isCancelled()) {
+    		simulationFrame.addProgressText(Color.BLACK, "Simulation finished\n");
+    		simulationFrame.getCancelButton().setEnabled(false);
+    	}
+    	else simulationFrame.addProgressText(Color.RED, "Simulation canceled\n");
+    	simulationFrame.getProgressDescription().setEditable(false);
+//    	simulationDialog.setVisible(false);
+    }
+
+	public void setDialog(SimulationFrame simulationDialog) {
+		this.simulationFrame = simulationDialog;
+	}
+
+}

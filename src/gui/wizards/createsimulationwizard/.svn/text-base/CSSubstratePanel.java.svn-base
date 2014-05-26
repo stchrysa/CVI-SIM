@@ -1,0 +1,122 @@
+package gui.wizards.createsimulationwizard;
+
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.Font;
+import java.awt.Insets;
+import java.awt.SystemColor;
+import java.util.List;
+
+import javax.swing.BorderFactory;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
+import javax.swing.DefaultListModel;
+import javax.swing.JLabel;
+import javax.swing.JList;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JSeparator;
+import javax.swing.border.EmptyBorder;
+import javax.swing.event.ListSelectionListener;
+
+import model.Substrate;
+
+public class CSSubstratePanel extends JPanel {
+	
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 1L;
+	
+	// Title panel elements
+    private JPanel titlePanel;
+    private JLabel title;
+    private JSeparator separator;
+	
+	// Main panel elements
+    private JList availableList;
+    private DefaultListModel availableListModel;
+
+    // Model elements
+    private List<Substrate> substrates;
+    
+	private JPanel contentPanel;
+    
+    public CSSubstratePanel(List<Substrate> substrates) {
+        
+    	this.substrates = substrates;
+    	
+        contentPanel = getContentPanel();
+        contentPanel.setBorder(new EmptyBorder(new Insets(50, 50, 50, 50)));
+
+        setLayout(new java.awt.BorderLayout()); 
+        
+        // Setting title
+        titlePanel = new JPanel();
+        separator = new JSeparator();
+        titlePanel.setLayout(new java.awt.BorderLayout());
+        titlePanel.setBackground(Color.gray);
+        
+        title = new JLabel();
+        title.setFont(new Font("MS Sans Serif", Font.BOLD, 14));
+        title.setText("Select the substrate for the simulation");
+        title.setBorder(new EmptyBorder(new Insets(10, 10, 10, 10)));
+        title.setOpaque(true);
+        
+        titlePanel.add(title, BorderLayout.CENTER);
+        titlePanel.add(separator, BorderLayout.SOUTH);
+
+        add(titlePanel, BorderLayout.NORTH);
+        JPanel secondaryPanel = new JPanel();
+        secondaryPanel.add(contentPanel, BorderLayout.NORTH);
+        add(secondaryPanel, BorderLayout.CENTER);
+
+    }
+
+	private JPanel getContentPanel() {
+		
+		JPanel contentPanel1 = new JPanel();
+        
+        JPanel panel = new JPanel();
+        panel.setLayout(new BoxLayout(panel,BoxLayout.PAGE_AXIS));
+        JLabel availableLabel = new JLabel("Available substrates");
+        availableLabel.setFont(new Font("MS Sans Serif", Font.BOLD, 12));
+        availableLabel.setAlignmentX(CENTER_ALIGNMENT);
+        panel.add(availableLabel);
+        panel.add(Box.createRigidArea(new Dimension(0,5)));
+        availableListModel = new DefaultListModel();
+		availableList = new JList(availableListModel);
+		availableList.setName("availableList");
+		SubstrateListCellRenderer slcr = new SubstrateListCellRenderer();
+		availableList.setCellRenderer(slcr);
+		initAvailableList();
+		JScrollPane availablePane = new JScrollPane(availableList);
+		availablePane.setPreferredSize(new Dimension(200,250));
+		availablePane.setBorder(BorderFactory.createLineBorder(SystemColor.activeCaption, 2));
+		panel.add(availablePane);
+        
+        contentPanel1.add(panel);
+        
+        return contentPanel1;
+	}
+
+	private void initAvailableList() {
+		for (Substrate substrate : substrates)
+			availableListModel.addElement(substrate);
+	}
+
+	public void addListeners(ListSelectionListener s) {
+		availableList.addListSelectionListener(s);
+    }
+
+	public boolean canFinish() {
+		return availableList.getSelectedValues().length==1;
+	}
+
+	public Substrate getSelectedSubstrate() {
+		if (availableList.getSelectedValues().length!=1) return null;
+		return (Substrate) availableList.getSelectedValue();
+	}
+
+}
