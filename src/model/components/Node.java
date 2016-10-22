@@ -53,7 +53,8 @@ public class Node {
 	protected String nType;
 	/** Connectivity Type **/
 	protected Connectivity connectivity;
-	
+	protected boolean critical;
+
 	public Node(int id) {
 		this.id = id;
 /*		*//** Default SO **//*
@@ -296,6 +297,14 @@ public class Node {
 	
 	public void setAvailableMemory(int availablememory){
 		this.availablememory = availablememory;
+	}
+	
+	public boolean isCritical() {
+		return critical;
+	}
+
+	public void setCritical(boolean critical) {
+		this.critical = critical;
 	}
 	
 	/** empty function rewrite on subclasses 
