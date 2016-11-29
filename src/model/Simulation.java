@@ -12,33 +12,31 @@ import java.util.List;
 public class Simulation {
 	
 	private String id;
-	private Substrate InPs;
-	private List<Substrate> substrates;
+	private Substrate substrate;
 	private List<Request> requests;
 	private Algorithm algorithm;
 	
 	/** Creates a new instance of Substrate */
-    public Simulation(Substrate InPs, List<Substrate> substrates, List<Request> requests, Algorithm algorithm) {
-    	this.substrates = substrates;
+    public Simulation(Substrate substrate, List<Request> requests,
+    		Algorithm algorithm) {
+    	this.substrate = substrate;
     	this.requests = requests;
     	this.algorithm = algorithm;
-    	this.InPs = InPs;
-    }
-    
-    public Substrate getInPs(){
-    	return InPs;
-    }
-    
-    public void setInPs(Substrate InPs){
-    	this.InPs=InPs;
     }
 
-	public List<Substrate> getSubstrates(){
-		return substrates;
+	public Substrate getSubstrate() {
+		return substrate;
 	}
 
-	public void setSubstrates(List<Substrate> substrates){
-		this.substrates=substrates;
+	public void setSubstrate(Substrate substrate) {
+		this.substrate = substrate;
+	}
+
+	public void changeSubstrate(Substrate newSubstrate) {
+		this.substrate.setState(SimulatorConstants.STATUS_AVAILABLE);
+		this.substrate = newSubstrate;
+		newSubstrate.setState(SimulatorConstants.STATUS_READY);
+		
 	}
 	
 	public List<Request> getRequests() {
@@ -48,7 +46,7 @@ public class Simulation {
 	public void setRequests(List<Request> requests) {
 		this.requests = requests;
 	}
-	
+
 	public void addRequests(List<Request> selectedRequests) {
 		for (Request req : selectedRequests) {
 			this.requests.add(req);
@@ -60,16 +58,6 @@ public class Simulation {
 		for (Request req : selectedRequests) {
 			this.requests.remove(req);
 			req.setState(SimulatorConstants.STATUS_AVAILABLE);
-		}
-	}
-	
-	public void changeSubstrate(List<Substrate> newSubstrates) {
-		for (Substrate sub: substrates){
-			sub.setState(SimulatorConstants.STATUS_AVAILABLE);
-		}
-		this.substrates = newSubstrates;
-		for (Substrate sub: substrates){
-			sub.setState(SimulatorConstants.STATUS_READY);
 		}
 	}
 	
@@ -114,33 +102,20 @@ public class Simulation {
 	
 	public List<Request> getEndingRequests(int time) {
 		List<Request> endingRequests = new ArrayList<Request>();
-		for (Request req : requests){
-			if (req.getEndDate()==time){
+		for (Request req : requests)
+			if (req.getEndDate()==time)
 				endingRequests.add(req);
-			}
-		}
 		return endingRequests;
 	}
 
-
 	/** Release resources of the requests from the substrate **/
 	public void releaseRequests(List<Request> endingRequests) {
-		// TODO
 		for (Request req : endingRequests){
-			if (req.getSubReq()!=null){
-				for (Request subVN: req.getSubReq()){
-					for (Substrate substrate: substrates){
-						if (subVN.getInP()==substrate.getId()){
-							if (subVN.getRMap().isDenied()==false){
-								subVN.getRMap().releaseNodes(substrate);
-								subVN.getRMap().releaseLinks(substrate);
-								System.out.println("//////////Released///////// "+subVN.getId()+ " at time "+req.getEndDate());
-							}
-						}
-					}
-					//this.substrate.print();
-				}
+			if (req.getRMap().isDenied()==false){
+			req.getRMap().releaseNodes(this.substrate);
+			req.getRMap().releaseLinks(this.substrate);
 			}
+			System.out.println("//////////Released///////// "+req.getId()+ " at time "+req.getEndDate());
 		}
 	}
 }

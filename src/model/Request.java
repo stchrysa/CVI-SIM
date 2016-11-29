@@ -1,16 +1,20 @@
 package model;
 
-import java.util.List;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 
-import edu.uci.ics.jung.graph.util.EdgeType;
-import edu.uci.ics.jung.graph.util.Pair;
-
+import tools.LinkComparator;
+import tools.NodeComparator;
+import model.components.Link;
 import model.components.Node;
 import model.components.RequestLink;
 import model.components.RequestRouter;
 import model.components.RequestSwitch;
 import model.components.VirtualMachine;
-
+import edu.uci.ics.jung.graph.Graph;
+import edu.uci.ics.jung.graph.util.EdgeType;
+import edu.uci.ics.jung.graph.util.Pair;
 
 /**
  * Request Class. Subclass of Network.
@@ -18,16 +22,16 @@ import model.components.VirtualMachine;
 public class Request extends Network {
 	
 	private String domain; 
-	private String InP;
 	private int startDate;
 	private int endDate;
-	private List<Request> subReq;
+	private String prov;
 	
 	/** Not used yet **/
 	private float resiliency;
 	/** Not used yet **/
 	private boolean splittable;
 	private ResourceMapping rmap;
+	
 	
     /** Creates a new instance of Substrate */
     public Request(String id) {
@@ -47,21 +51,22 @@ public class Request extends Network {
 	public void setDomain(String domain) {
 		this.domain = domain;
 	}
-	
-	public String getInP() {
-		return InP;
-	}
-
-	public void setInP(String InP) {
-		this.InP = InP;
-	}
 
 	public int getStartDate() {
 		return startDate;
 	}
+	
 
 	public void setStartDate(int startDate) {
 		this.startDate = startDate;
+	}
+	
+	public String getProv(){
+		return prov;
+	}
+	
+	public void setProv(String prov){
+		this.prov=prov;
 	}
 
 	public int getEndDate() {
@@ -70,14 +75,6 @@ public class Request extends Network {
 
 	public void setEndDate(int endDate) {
 		this.endDate = endDate;
-	}
-	
-	public List<Request> getSubReq(){
-		return subReq;
-	}
-	
-	public void setSubReq(List<Request> subReq){
-		this.subReq=subReq;
 	}
 	
 	public void constructJRA23Request() {
@@ -155,7 +152,6 @@ public class Request extends Network {
 	    graph.addEdge(requestLink,new Pair<Node>(r0,sw2), EdgeType.UNDIRECTED);
 	}
 	
-	
 	public Object getCopy() {
     	Request r = new Request(this.getId());
     	r.state = this.state;
@@ -174,4 +170,58 @@ public class Request extends Network {
 	
 	 public void setRMap (ResourceMapping r){ this.rmap=r; }
 	    public ResourceMapping getRMap (){ return  this.rmap; }
+	    
+	    
+	    @SuppressWarnings("unchecked")
+		public void print(){
+			ArrayList<Node> nodes =(ArrayList<Node>)getNodes(this.getGraph());
+			ArrayList<Link> links =(ArrayList<Link>) getLinks(this.getGraph());
+			Collections.sort(nodes,new NodeComparator());
+			Collections.sort(links,new LinkComparator());
+			
+			System.out.println("****************************Requested Nodes**************************");
+			
+			
+			for (Node current : nodes){
+				System.out.print("["  +  current.getId() + ": ");
+			if ((current) instanceof VirtualMachine  )  
+				System.out.println(((VirtualMachine)current).getCpu()+" "+ ((VirtualMachine)current).getMemory()+" "+((VirtualMachine)current).getDiskSpace()+"]");	
+		    else if (((current) instanceof RequestRouter) )
+		    	System.out.println( "[ 1 ]");
+			}
+
+			System.out.println("****************************Requested Links**************************");
+			for (Link current : links){
+				Pair<Node> nodesOfLink = this.getGraph().getEndpoints(current);
+				System.out.println("Link: " + current.getId()+ ": " +current.getBandwidth() + " SRC:  " +nodesOfLink.getFirst() + " DEST: "+ nodesOfLink.getSecond());
+			}
+				
+			
+		}
+	    
+	    public ArrayList<Link> getLinks(Graph<Node,Link> t) {
+			ArrayList<Link> reqLink =new ArrayList<Link>();
+			Collection<Link> edges =  t.getEdges();
+
+			for (Link current : edges)
+				reqLink.add(current);
+			
+			return reqLink;
+		}
+		
+		public ArrayList<Node> getNodes(Graph<Node,Link> t) {
+			ArrayList<Node> reqNodes =new ArrayList<Node>();
+			Collection<Link> edges =  t.getEdges();
+
+			for (Link current : edges){
+				Pair<Node> currentNodes =t.getEndpoints(current);
+				if (reqNodes.contains(currentNodes.getFirst())==false)
+					reqNodes.add(currentNodes.getFirst());
+				if (reqNodes.contains(currentNodes.getSecond())==false)
+					reqNodes.add(currentNodes.getSecond());
+			}
+
+
+			return reqNodes;
+		}
 }

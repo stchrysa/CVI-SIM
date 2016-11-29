@@ -1,21 +1,19 @@
 package output;
 
-import edu.uci.ics.jung.graph.util.Pair;
 import gui.SimulatorConstants;
 
-import java.util.LinkedHashMap;
-import java.util.List;
 
+import java.text.DecimalFormat;
+import java.util.ArrayList;
 import model.Request;
 import model.Substrate;
+import model.components.BackupLink;
+import model.components.BackupNode;
 import model.components.Link;
 import model.components.Node;
-import model.components.Path;
-import model.components.RequestRouter;
 import model.components.Server;
 import model.components.SubstrateRouter;
 import model.components.VirtualMachine;
-import model.components.SubstrateLink;
 
 public class Results {
 	private Substrate substrate;
@@ -27,188 +25,183 @@ public class Results {
 	public double Acceptance_Ratio(double denial, double current_request){
 		return (current_request-denial)/current_request;
 	}
-	
+
 	
 	public double Generate_Revenue(Request req){
 		double sum=0;
 		for (Node x: req.getGraph().getVertices()){
-				if (x instanceof VirtualMachine)
-					sum=sum+x.getCpu()+x.getMemory()+((VirtualMachine)x).getDiskSpace();
-				else if (x instanceof RequestRouter)
-					sum=sum+30;
+				if(!(x instanceof BackupNode)){
+					if (x instanceof VirtualMachine)
+						sum=sum+x.getCpu()+x.getMemory()+((VirtualMachine)x).getDiskSpace();
+					else {
+						if (req.getProv()=="soft") sum=sum+15;
+						else sum=sum+30;
+					}
+				}
 		}
 		
 		for (Link current: req.getGraph().getEdges())
-			sum=sum+current.getBandwidth();
+			if(!(current instanceof BackupLink))
+				sum=sum+current.getBandwidth();
 		
 		return sum;
 	}
 	
-	public double avgHops(LinkedHashMap<Link, List<Path>> flow){
+	public double avgHops(double[][][] flow){
 		double avgHops =0;
-		if (flow!=null){
-			
-			for (Link key: flow.keySet()){
-				int hop_count=0;
-				for (Path path: (List<Path>) flow.get(key)){
-					for (Link link: path.getSubstrateLinks()){
-						for (Link edge: substrate.getGraph().getEdges()){
-							if (link.getName()==edge.getName()){
-								hop_count++;
-							}
-						}
+		@SuppressWarnings("unused")
+		ArrayList<Integer> x= new ArrayList<Integer>();
+		
+		for (int k=0; k< flow.length;k++){
+			int hop_count=0;
+			for (int i=0; i<flow[k].length;i++) {
+				for (int j=0; j<flow[k][i].length;j++){
+					if (flow[k][i][j]>0){						
+						hop_count++;
 					}
 				}
-				avgHops += hop_count;
-			}	
-					
-		return avgHops;
-	}
-	else return 0;
+			}
+			avgHops +=hop_count;
+		}
+		
+		return avgHops/flow.length;
 	}
 	
-	
-	 public double Cost_Embedding(LinkedHashMap<Link, List<Path>> flow, Request req){
-		 
-		 double cost = 0;
-		 if (flow!=null){
-			for (Link key: flow.keySet()){
-				for (Path path: (List<Path>) flow.get(key)){
-					for (Link link: path.getSubstrateLinks()){
-						for (Link edge: substrate.getGraph().getEdges()){
-							if (link.getName()==edge.getName()){
-								cost += path.getBandwidth();
-							}
-						}
-					}
-				}
-			}			 
-		 }
-		  
-
+	 public double Node_Cost(Request req){
+		 double cost=0;
 		   for (Node x: req.getGraph().getVertices()){
-
-		     if (x instanceof VirtualMachine){
+		     if (x instanceof VirtualMachine)
 		      cost=cost+x.getCpu()+x.getMemory()+((VirtualMachine)x).getDiskSpace();
-
+		     else{
+		    	 if (req.getProv()=="soft") cost=cost+15;
+				 else cost=cost+30;
 		     }
-		   }
-
+		   }		  
+		  return cost;
+	 }
+	 
+	
+	
+	 public double Link_Cost(double[][][] flow){
+		 DecimalFormat df = new DecimalFormat();
+		 df.setMaximumFractionDigits(4);
+		 
+		 double cost=0;
+		  for (int k=0;k<flow.length;k++){
+			  for (int i=0;i<this.substrate.getGraph().getVertexCount();i++){
+				  for (int j=0;j<this.substrate.getGraph().getVertexCount();j++){
+					  if(flow[k][i][j]!=0)
+					  		System.out.println(k+","+i+","+j+": "+df.format(flow[k][i][j])+"\t");
+					  cost=cost+flow[k][i][j];
+				  }
+				 // System.out.println("");
+			  }
+		  }  
+		  System.out.println("linkCost: "+cost);
+		  return cost;
+	 }
+	 
+	 public double Cost_Embedding(double[][][] flow, Request req){
+		 double cost=0;
+		 
+		 cost+=Link_Cost(flow);
+		  
+		  if (cost!=0){
+		   cost+=Node_Cost(req);
+		  }
 		  
 		  return cost;
-		 }
+	 }
 	 
-
-	
-	 public static double[] Node_utilization_Server_Cpu(List<Substrate> substrates){
-		 
-		 double[] cpu_util= new double[substrates.size()];
-		 
-		 int counter_sub=0;		 
-		 for (Substrate sub: substrates){
-			 double servers=0;
-			 double cpu_util_sub=0;
-			 for (Node node: sub.getGraph().getVertices()){
-				 if (node instanceof Server){
-					 servers++;
-					 double div = 1 - ( (double) ((Server) node).getCpu()/(double) ((Server) node).getAvailableCpu());
-					 cpu_util_sub = cpu_util_sub + div;
-				 }
-			 }
-			 cpu_util[counter_sub]= cpu_util_sub/servers;
-		 		 
-			 counter_sub++;
-		 }	
-
-		 return cpu_util;
-		}
-		
-		public static double[] Node_utilization_Server_Memory(List<Substrate> substrates){
-			 double[] mem_util= new double[substrates.size()];
-			 int counter_sub=0;
-			 
-			 for (Substrate sub: substrates){
-				 double servers=0;
-				 double mem_util_sub=0;
-				 for (Node node: sub.getGraph().getVertices()){
-					 if (node instanceof Server){
-						 servers++;
-						 double div = 1 - ( (double) ((Server) node).getMemory()/(double) ((Server) node).getAvailableMemory());
-						 mem_util_sub = mem_util_sub + div;
+	 //The total backup resources cost to to working resource costs
+	 public double Working_Cost(double[][][] flow,int reqLinksNum, Request req){
+		 double working_cost=0;
+		  for (int k=0;k<reqLinksNum;k++){
+		   for (int i=0;i<this.substrate.getGraph().getVertexCount();i++){
+		    for (int j=0;j<this.substrate.getGraph().getVertexCount();j++){
+		     working_cost=working_cost+flow[k][i][j];
+		    }
+		   }
+		  }
+		  System.out.println("woring link cost: "+working_cost);
+		  double node_working_cost = 0;
+		  if (working_cost!=0){
+		   for (Node x: req.getGraph().getVertices()){
+			 if(!(x instanceof BackupNode)){
+			     if (x instanceof VirtualMachine){
+			    	working_cost=working_cost+x.getCpu()+x.getMemory()+((VirtualMachine)x).getDiskSpace();
+			     	node_working_cost=node_working_cost+x.getCpu()+x.getMemory()+((VirtualMachine)x).getDiskSpace();
+			     }
+			     else{
+			    	 if (req.getProv()=="soft"){
+			    		 working_cost=working_cost+15;
+			    		 node_working_cost=node_working_cost+15;
+			    	 }
+					 else{
+						 working_cost=working_cost+30;
+						 node_working_cost=node_working_cost+30;
 					 }
-				 }
-				 mem_util[counter_sub]= mem_util_sub/servers;
-		 		 
-				 counter_sub++;
-			 }	
-
-			 return mem_util;
-		}
-		
-		public static double[] Node_utilization_Server_DiskSpace(List<Substrate> substrates){
-			double[] disk_util= new double[substrates.size()];
-
-			 int counter_sub=0;
-			 for (Substrate sub: substrates){
-				 double servers=0;
-				 double disk_util_sub=0;
-				 for (Node node: sub.getGraph().getVertices()){
-					 if (node instanceof Server){
-						 servers++;
-						 double div = 1 - ( (double) ((Server) node).getDiskSpace()/(double) ((Server) node).getAvailableDiskSpace());
-						 disk_util_sub = disk_util_sub + div;
-					 }
-				 }
-				 disk_util[counter_sub]= disk_util_sub/servers;
-				 
-				 counter_sub++;
-			 }	
-
-			 return disk_util;
-		}
+			     }
+			   }
+		   }
+		  }
+		  System.out.println("woring node cost: "+node_working_cost);
+		  return working_cost;
+	 }
 	
-	public static double[] Node_utilization_Router(List<Substrate> substrates){
-		double[] router_util= new double[substrates.size()];
-		 
-		int counter_sub=0;		 
-		 for (Substrate sub: substrates){
-			 double routers=0;
-			 double router_util_sub=0;
-			 for (Node node: sub.getGraph().getVertices()){
-				 if (node instanceof SubstrateRouter){
-					 routers++;
-					 double div = 1 - ( (double) ((SubstrateRouter) node).getLogicalInstances()/(double) ((SubstrateRouter) node).getAvailableLogicalInstances());
-					 router_util_sub = router_util_sub + div;
-				 }
-			 }
-			 router_util[counter_sub]= router_util_sub/routers;
-		 		 
-			 counter_sub++;
-		 }	
-
-		 return router_util;
-	}
-
-	
-	public static double[] Link_utilization(List<Substrate> substrates){
-		double[] link_util= new double[substrates.size()];
-
-		 int counter_sub=0;
-		 for (Substrate sub: substrates){
-			 double link_util_sub=0;
-			 for (Link link: sub.getGraph().getEdges()){
-					 double div = 1 - ( (double) ((SubstrateLink) link).getBandwidth() /(double) ((SubstrateLink) link).getAvailableBandwidth());
-					 link_util_sub = link_util_sub + div;
-			 }
-			 link_util[counter_sub]= link_util_sub/sub.getGraph().getEdgeCount();
-		 		 
-			 counter_sub++;
-		 }	
-
-		 return link_util;
+	public double[] Node_utilization_Server_Cpu(double[] initial){
+		double[] n_util=new double[initial.length];
+			
+		for (Node x: this.substrate.getGraph().getVertices()){
+			if (x instanceof Server){
+					n_util[x.getId()]=1-(x.getCpu()/initial[x.getId()]);
+			}
+		}
+		return n_util;
 	}
 	
-
+	public double[] Node_utilization_Server_Memory(double[] initial){
+		double[] n_util=new double[initial.length];
+				
+		for (Node x: this.substrate.getGraph().getVertices()){
+			if (x instanceof Server){
+					n_util[x.getId()]=1-(x.getMemory()/initial[x.getId()]);
+			}
+		}
+		return n_util;
+	}
+	
+	public double[] Node_utilization_Server_DiskSpace(double[] initial){
+		double[] n_util=new double[initial.length];
+				
+		for (Node x: this.substrate.getGraph().getVertices()){
+			if (x instanceof Server){
+					n_util[x.getId()]=1-(((Server)x).getDiskSpace()/initial[x.getId()]);
+			}
+		}
+		return n_util;
+	}
+	
+	public double[] Node_utilization_Router(){
+		double[] n_util=new double[this.substrate.getGraph().getVertexCount()];
+				
+		for (Node x: this.substrate.getGraph().getVertices()){
+			if (x instanceof SubstrateRouter){
+					n_util[x.getId()]=1-( (double)((SubstrateRouter)x).getLogicalInstances()/(double)SimulatorConstants.MAX_LOGICAL_INSTANCES);
+			}
+		}
+		return n_util;
+	}
+	
+	
+	public double[] Link_utilization(double[] initial){
+		double[] l_util=new double[initial.length];
+		
+		for (Link current: this.substrate.getGraph().getEdges()){
+			l_util[current.getId()]= 1-((double) current.getBandwidth()/initial[current.getId()]);
+		}
+		return l_util;
+	}
 	
 	
 	

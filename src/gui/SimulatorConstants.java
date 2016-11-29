@@ -1,7 +1,12 @@
 package gui;
 
-public class SimulatorConstants {
+import java.util.Random;
 
+public class SimulatorConstants {
+	//random generator seed
+	//public static final int RANDOM_SEED = 33333333;
+	public static final int RANDOM_SEED = 10000000 + (int)(Math.random()*99999999);
+	
 	// Substrate, Algorithm and Request status constants
 	public static final String STATUS_AVAILABLE = "available";
 	public static final String STATUS_ASSIGNED = "assigned";
@@ -38,6 +43,7 @@ public class SimulatorConstants {
 	public static final int MIN_BW = 50;
 	public static final int MAX_BW_REQUEST = 50;
 	public static final int MIN_BW_REQUEST = 1;
+	public static final int MAX_ROUTER_BW=1000;
 	// Memory
 	public static final int MAX_MEMORY = 100;
 	public static final int MIN_MEMORY = 50;
@@ -65,5 +71,5 @@ public class SimulatorConstants {
 	
 	// Server constants
 	public static final int MAX_LOGICAl_IFACES_SERVER = 4000;
-	public static final int NODE_MAX_CAPACITY_TYPES = 3;
+	
 }
