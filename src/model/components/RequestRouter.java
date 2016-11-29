@@ -1,6 +1,5 @@
 package model.components;
 
-import gui.Icons;
 
 /**
  * RequestRouter Class. Subclass of Node.
@@ -12,11 +11,6 @@ public class RequestRouter extends Node {
 	public RequestRouter(int id) {
 		super(id);
 		name = "requestRouter"+id;
-		setIcon(Icons.ROUTER);
-		setSmallIcon(Icons.ROUTER_SMALL);
-		setPickedIcon(Icons.ROUTER_PICKED);
-		setYellowIcon(Icons.ROUTER_YELLOW);
-		setRedIcon(Icons.ROUTER_RED);
 		physicalRouter = null;
 	}
 

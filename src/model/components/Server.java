@@ -1,6 +1,5 @@
 package model.components;
 
-import gui.Icons;
 import gui.SimulatorConstants;
 
 import java.util.ArrayList;
@@ -28,11 +27,6 @@ public class Server extends Node {
 		super(id);
 		name = "server"+id;
 		virtualMachines = new ArrayList<VirtualMachine>();
-		setIcon(Icons.SERVER);
-		setSmallIcon(Icons.SERVER_SMALL);
-		setPickedIcon(Icons.SERVER_PICKED);
-		setYellowIcon(Icons.SERVER_YELLOW);
-		setRedIcon(Icons.SERVER_RED);
 		setMaxLogicalIfaces(SimulatorConstants.MAX_LOGICAl_IFACES_SERVER);
 		/** Default VSoftware **/
 		vSoftware = VSoftware.VMWare;

@@ -1,6 +1,5 @@
 package model.components;
 
-import gui.Icons;
 
 /**
  * VirtualMachine Class. Subclass of Node.
@@ -13,11 +12,6 @@ public class VirtualMachine extends Node {
 	public VirtualMachine(int id) {
 		super(id);
 		name = "vm"+id;
-		setIcon(Icons.VM);
-		setSmallIcon(Icons.VM_SMALL);
-		setPickedIcon(Icons.VM_PICKED);
-		setYellowIcon(Icons.VM_YELLOW);
-		setRedIcon(Icons.VM_RED);
 		this.server = null;
 	}
 

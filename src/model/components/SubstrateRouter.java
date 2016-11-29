@@ -1,6 +1,5 @@
 package model.components;
 
-import gui.Icons;
 import gui.SimulatorConstants;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -24,11 +23,6 @@ public class SubstrateRouter extends Node {
 	public SubstrateRouter(int id) {
 		super(id);
 		name = "substrateRouter"+id;
-		setIcon(Icons.ROUTER);
-		setSmallIcon(Icons.ROUTER_SMALL);
-		setPickedIcon(Icons.ROUTER_PICKED);
-		setYellowIcon(Icons.ROUTER_YELLOW);
-		setRedIcon(Icons.ROUTER_RED);
 		setMaxLogicalIfaces(SimulatorConstants.MAX_LOGICAl_IFACES_ROUTER);
 		virtualRouters = new ArrayList<RequestRouter>();
 	}

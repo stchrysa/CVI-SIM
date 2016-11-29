@@ -1,6 +1,5 @@
 package model.components;
 
-import gui.Icons;
 import gui.SimulatorConstants;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -18,11 +17,6 @@ public class SubstrateSwitch extends Node {
 	public SubstrateSwitch(int id) {
 		super(id);
 		name = "substrateSwitch"+id;
-		setIcon(Icons.SWITCH);
-		setSmallIcon(Icons.SWITCH_SMALL);
-		setPickedIcon(Icons.SWITCH_PICKED);
-		setYellowIcon(Icons.SWITCH_YELLOW);
-		setRedIcon(Icons.SWITCH_RED);
 		setMaxLogicalIfaces(SimulatorConstants.MAX_LOGICAl_IFACES_SWITCH);
 		virtualSwitches = new ArrayList<RequestSwitch>();
 	}

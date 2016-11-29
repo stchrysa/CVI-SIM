@@ -1,7 +1,5 @@
 package model.components;
 
-import gui.Icons;
-
 /**
  * RequestSwitch Class. Subclass of Node.
  */
@@ -12,11 +10,6 @@ public class RequestSwitch extends Node {
 	public RequestSwitch(int id) {
 		super(id);
 		name = "requestSwitch"+id;
-		setIcon(Icons.SWITCH);
-		setSmallIcon(Icons.SWITCH_SMALL);
-		setPickedIcon(Icons.SWITCH_PICKED);
-		setYellowIcon(Icons.SWITCH_YELLOW);
-		setRedIcon(Icons.SWITCH_RED);
 		physicalSwitch = null;
 	}
 
